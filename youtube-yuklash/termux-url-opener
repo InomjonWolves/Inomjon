@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Termux: boshqa ilovada «Ulashish → Termux» bosilganda shu skript ishga tushadi.
+# YouTube (yoki boshqa sayt) havolasini «yt» ga beradi.
+YT="${PREFIX:-/data/data/com.termux/files/usr}/bin/yt"
+command -v yt >/dev/null && YT=$(command -v yt)
+"$YT" "$1"
+echo
+read -r -p "Oynani yopish uchun Enter bosing… " _ </dev/tty 2>/dev/null || true

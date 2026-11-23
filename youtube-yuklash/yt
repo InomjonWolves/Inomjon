@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+# yt — YouTube videolarini telefonga eng yuqori sifatda yuklash (Android, Termux).
+#
+#   yt                  havolani soʻraydi
+#   yt <havola>         sifatni tanlash menyusi
+#   yt <havola> 1..4    darhol: 1 eng yuqori, 2 MP4, 3 720p, 4 audio
+#   yt yangilash        yt-dlp va shu skriptni yangilash
+#   yt yordam           qisqa yordam
+#
+# YouTube ilovasida «Ulashish → Termux» ham shu skriptni ochadi (~/bin/termux-url-opener).
+# Ichida yt-dlp (ochiq kodli yuklovchi) va ffmpeg (video + audioni birlashtiradi) ishlaydi.
+
+YT_VERSION="1.0"
+YT_BASE="${YT_BASE:-https://raw.githubusercontent.com/InomjonWolves/Inomjon/ccr-dc03c86a-hhey2p/youtube-yuklash}"
+PY="${YT_PYTHON:-python}"
+STATE="$HOME/.local/state/yt"
+UPDATE_DAYS=5   # YouTube tez-tez oʻzgaradi — yt-dlp shuncha kunda bir yangilanadi
+
+if [ -t 1 ]; then
+  B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' C=$'\e[36m' D=$'\e[2m' N=$'\e[0m'
+else
+  B="" G="" Y="" R="" C="" D="" N=""
+fi
+say()  { printf '%s\n' "${C}›${N} $*"; }
+ok()   { printf '%s\n' "${G}✔${N} $*"; }
+warn() { printf '%s\n' "${Y}!${N} $*"; }
+err()  { printf '%s\n' "${R}✖ $*${N}" >&2; }
+
+# Menyu va savollar klaviaturadan oʻqiladi (skript «curl | bash» yoki ulashish orqali ochilsa ham).
+ask() {
+  local _a
+  if [ -r /dev/tty ]; then read -r -p "$1" _a </dev/tty || _a=""; else read -r -p "$1" _a || _a=""; fi
+  printf '%s' "$_a"
+}
+
+usage() {
+  cat <<EOF
+${B}yt${N} — YouTube'dan telefonga eng yuqori sifatda yuklash  ${D}(v$YT_VERSION)${N}
+
+  yt                  havolani soʻraydi
+  yt <havola>         sifatni tanlaysiz
+  yt <havola> 1       eng yuqori sifat (4K/8K, HDR)
+  yt <havola> 2       MP4 — istalgan pleyerda ochiladi (1080p gacha)
+  yt <havola> 3       720p — kam joy egallaydi
+  yt <havola> 4       faqat audio (M4A)
+  yt yangilash        yt-dlp va shu skriptni yangilash
+
+Eng oson yoʻli: YouTube'da ${B}Ulashish → Termux${N}.
+Fayllar: ${B}Download/YouTube${N} (audio — Download/YouTube/Audio).
+EOF
+}
+
+# ---------- yangilash ----------
+
+pip_q() { PIP_BREAK_SYSTEM_PACKAGES=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_ROOT_USER_ACTION=ignore "$PY" -m pip install -U -q "$@"; }
+
+update_ytdlp() {
+  say "yt-dlp yangilanmoqda…"
+  pip_q yt-dlp mutagen certifi || { err "yt-dlp ni yangilab boʻlmadi (internetni tekshiring)."; return 1; }
+  # YouTube «sir»larini yechuvchi skriptlar — yt-dlp aynan qaysi versiyani soʻrasa, oʻshani.
+  local ejs
+  ejs=$("$PY" - <<'PYEOF' 2>/dev/null
+import importlib.metadata as m, re
+for r in m.requires("yt-dlp") or []:
+    if r.startswith("yt-dlp-ejs"):
+        print(re.split(r"[;\s]", r, maxsplit=1)[0]); break
+PYEOF
+)
+  pip_q "${ejs:-yt-dlp-ejs}" || warn "yt-dlp-ejs oʻrnatilmadi — kerak boʻlsa GitHub'dan oʻzi oladi."
+  mkdir -p "$STATE" && date +%s >"$STATE/updated"
+  ok "yt-dlp $("$PY" -m yt_dlp --version 2>/dev/null)"
+}
+
+update_if_old() {
+  local last now
+  last=$(cat "$STATE/updated" 2>/dev/null || echo 0)
+  now=$(date +%s)
+  [ $((now - last)) -lt $((UPDATE_DAYS * 86400)) ] && return 0
+  update_ytdlp || warn "Eski versiya bilan davom etamiz."
+}
+
+update_self() {
+  local tmp f dst
+  tmp=$(mktemp -d)
+  for f in yt termux-url-opener; do
+    curl -fsSL "$YT_BASE/$f" -o "$tmp/$f" && bash -n "$tmp/$f" || { err "$f ni yuklab boʻlmadi."; rm -rf "$tmp"; return 1; }
+  done
+  dst=$(command -v yt || echo "${PREFIX:-/usr}/bin/yt")
+  mkdir -p "$HOME/bin"
+  for f in yt termux-url-opener; do
+    chmod +x "$tmp/$f"
+    command -v termux-fix-shebang >/dev/null && termux-fix-shebang "$tmp/$f"
+  done
+  # mv — yangi fayl: hozir ishlab turgan skript buzilmaydi.
+  mv -f "$tmp/yt" "$dst" && mv -f "$tmp/termux-url-opener" "$HOME/bin/termux-url-opener"
+  rm -rf "$tmp"
+  ok "Skript yangilandi: $("$dst" --version 2>/dev/null)"
+}
+
+# ---------- papka ----------
+
+pick_dir() {
+  local d
+  if [ -n "${YT_DIR:-}" ]; then mkdir -p "$YT_DIR" && { echo "$YT_DIR"; return 0; }; fi
+  for d in /storage/emulated/0/Download "$HOME/storage/downloads"; do
+    if [ -d "$d" ] && [ -w "$d" ]; then echo "$d/YouTube"; return 0; fi
+  done
+  return 1
+}
+
+need_storage() {
+  local dir
+  dir=$(pick_dir) && { echo "$dir"; return 0; }
+  warn "Termux'ga xotiraga yozish ruxsati kerak — chiqqan oynada «Ruxsat berish»ni bosing." >&2
+  command -v termux-setup-storage >/dev/null && termux-setup-storage >/dev/null 2>&1
+  for _ in $(seq 1 60); do
+    sleep 1
+    dir=$(pick_dir) && { echo "$dir"; return 0; }
+  done
+  err "Xotiraga ruxsat berilmadi. Termux'da «termux-setup-storage» buyrugʻini yozing va ruxsat bering."
+  return 1
+}
+
+# ---------- yuklash ----------
+
+clean_url() {
+  # Ulashilgan matndan havolani ajratib oladi.
+  printf '%s' "$1" | grep -oE 'https?://[^[:space:]"<>]+' | head -n1
+}
+
+is_youtube() { [[ "$1" =~ ^https?://([a-z0-9-]+\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)/ ]]; }
+
+choose_mode() {
+  {
+    echo
+    echo "  ${B}Qanday yuklaymiz?${N}"
+    echo "   ${B}1${N}) Eng yuqori sifat — 4K/8K, HDR  ${D}(standart)${N}"
+    echo "   ${B}2${N}) MP4 — istalgan pleyerda ochiladi, 1080p gacha"
+    echo "   ${B}3${N}) 720p — kam joy egallaydi"
+    echo "   ${B}4${N}) Faqat audio — M4A (musiqa)"
+  } >&2
+  local m
+  m=$(ask "  Tanlang [1]: ")
+  echo "${m:-1}"
+}
+
+# Pleylist: «faqat shu video» yoki «hammasi».
+playlist_args() {
+  local url="$1" a
+  [[ "$url" == *"list="* ]] || { echo "--no-playlist"; return; }
+  if [[ "$url" == *"/playlist?"* ]]; then echo "--yes-playlist"; return; fi
+  {
+    echo
+    echo "  Bu video pleylist ichida."
+    echo "   ${B}1${N}) Faqat shu video  ${D}(standart)${N}"
+    echo "   ${B}2${N}) Butun pleylist"
+  } >&2
+  a=$(ask "  Tanlang [1]: ")
+  [ "$a" = "2" ] && echo "--yes-playlist" || echo "--no-playlist"
+}
+
+# Yuklashdan oldin koʻrsatiladigan qator, masalan: 2160p60 HDR10 · vp09+opus · ~1.2GB
+VINFO="%(height|?)sp%(fps|)s %(dynamic_range|)s · %(vcodec.:4|?)s+%(acodec.:4|?)s · ~%(filesize,filesize_approx|?)DB"
+
+mode_args() {
+  # Natija MODE_NAME, OUT_SUB, INFO va FMT massivida.
+  case "$1" in
+    1|max|eng)
+      MODE_NAME="Eng yuqori sifat"
+      OUT_SUB=""
+      # Eng katta oʻlcham, kadr tezligi, HDR; bir xil oʻlchamda VP9 — har bir telefon uni
+      # apparat bilan ochadi (AV1 faqat yangi telefonlarda). MP4 ga sigʻmasa — MKV.
+      FMT=(-f "bv*+ba/b" -S "res,fps,hdr:12,vcodec:vp9" --merge-output-format "mp4/mkv")
+      INFO="$VINFO" ;;
+    2|mp4)
+      MODE_NAME="MP4 (H.264)"
+      OUT_SUB=""
+      FMT=(-f "bv*+ba/b" -S "vcodec:h264,lang,quality,res,fps,hdr:12,acodec:aac"
+           --merge-output-format mp4 --remux-video mp4)
+      INFO="$VINFO" ;;
+    3|720)
+      MODE_NAME="720p"
+      OUT_SUB=""
+      FMT=(-f "bv*+ba/b" -S "res:720,vcodec:h264,acodec:aac"
+           --merge-output-format mp4 --remux-video mp4)
+      INFO="$VINFO" ;;
+    4|audio|mp3|m4a)
+      MODE_NAME="Audio (M4A)"
+      OUT_SUB="/Audio"
+      FMT=(-f "ba[ext=m4a]/ba/b" -x --audio-format m4a
+           --embed-thumbnail --convert-thumbnails jpg)
+      INFO="%(acodec.:4|?)s · %(abr|?)d kbit/s · ~%(filesize,filesize_approx|?)DB" ;;
+    *) return 1 ;;
+  esac
+}
+
+# Xato matnidan oʻzbekcha tushuntirish. 0 — qayta urinish foydasiz, 1 — yangilab koʻrish mumkin.
+explain() {
+  local log="$1"
+  if grep -qiE "Private video" "$log"; then
+    err "Bu video yopiq (private)."; return 0
+  elif grep -qiE "members-only|Join this channel" "$log"; then
+    err "Bu video faqat kanal aʼzolari uchun."; return 0
+  elif grep -qiE "Video unavailable|has been removed|no longer available|This video is not available" "$log"; then
+    err "Video mavjud emas yoki oʻchirilgan."; return 0
+  elif grep -qiE "confirm your age|age-restricted|inappropriate for some users" "$log"; then
+    err "Bu video yosh cheklovi bilan — hisobsiz yuklab boʻlmaydi."; return 0
+  elif grep -qiE "Sign in to confirm|not a bot" "$log"; then
+    err "YouTube «robot emasligingizni» tekshiryapti."
+    warn "Wi-Fi'dan mobil internetga (yoki aksincha) oʻtib, bir ozdan keyin qayta urining."
+    return 1
+  elif grep -qiE "No space left|ENOSPC" "$log"; then
+    err "Telefonda joy qolmadi."; return 0
+  elif grep -qiE "Unable to download webpage|Failed to resolve|Network is unreachable|timed out|Connection reset|getaddrinfo" "$log"; then
+    err "Internet bilan muammo. Ulanishni tekshirib, qayta urining."; return 0
+  fi
+  err "Yuklab boʻlmadi."
+  return 1
+}
+
+download() {
+  local url="$1" mode="$2" dir pl log rc
+  mode_args "$mode" || { err "Notoʻgʻri tanlov: $mode (1, 2, 3 yoki 4)"; return 2; }
+  dir=$(need_storage) || return 1
+  dir="$dir$OUT_SUB"
+  mkdir -p "$dir/.yuklanmoqda" && : >"$dir/.yuklanmoqda/.nomedia"
+  pl=$(playlist_args "$url")
+  local TPL="%(title).150B [%(id)s].%(ext)s"
+  # Pleylist — oʻz papkasida, tartib raqami bilan.
+  [ "$pl" = "--yes-playlist" ] && TPL="%(playlist_title,playlist_id|Pleylist).80B/%(playlist_index|0)03d - $TPL"
+
+  local args=(
+    "${FMT[@]}" "$pl"
+    --js-runtimes node --remote-components ejs:github
+    -P "$dir" -P "temp:$dir/.yuklanmoqda"
+    -o "$TPL"
+    --windows-filenames --no-mtime --embed-metadata --embed-chapters
+    --concurrent-fragments 4 --retries 10 --fragment-retries 10
+    --quiet --progress --no-warnings
+    --print "before_dl:${B}%(title)s${N}"
+    --print "before_dl:${D}  ${INFO}${N}"
+    --print "after_move:${G}✔${N} Saqlandi: %(filepath)s"
+  )
+  [ "$pl" = "--yes-playlist" ] && args+=(--download-archive "$dir/.yuklangan.txt")
+
+  echo >&2
+  say "${MODE_NAME} · ${dir#/storage/emulated/0/}"
+  command -v termux-wake-lock >/dev/null && termux-wake-lock 2>/dev/null
+  local try log
+  for try in 1 2; do
+    "$PY" -m yt_dlp "${args[@]}" -- "$url"
+    rc=$?
+    [ $rc -eq 0 ] && break
+    if [ "$pl" = "--yes-playlist" ]; then
+      warn "Baʼzi videolarni yuklab boʻlmadi. Qayta ishga tushirsangiz, qolganlari yuklanadi."
+      break
+    fi
+    # Progress chizigʻi buzilmasligi uchun xato matni alohida, qisqa tekshiruv bilan olinadi.
+    log=$(mktemp)
+    "$PY" -m yt_dlp --simulate --no-warnings --js-runtimes node --remote-components ejs:github \
+      "$pl" -- "$url" >/dev/null 2>"$log"
+    explain "$log" && { rm -f "$log"; break; }
+    rm -f "$log"
+    [ $try -eq 1 ] && update_ytdlp && say "Yana bir marta urinib koʻramiz…" && continue
+    break
+  done
+  command -v termux-wake-unlock >/dev/null && termux-wake-unlock 2>/dev/null
+  # Vaqtinchalik papka: boʻsh boʻlsa oʻchadi, chala fayllar qolsa — keyingi safar davom etadi.
+  rm -f "$dir/.yuklanmoqda/.nomedia"
+  find "$dir/.yuklanmoqda" -depth -type d -empty -delete 2>/dev/null
+  [ -d "$dir/.yuklanmoqda" ] && : >"$dir/.yuklanmoqda/.nomedia"
+  if [ $rc -eq 0 ]; then
+    # Android 10 va undan eskisida galereya faylni darhol koʻrsin (Termux:API boʻlsa).
+    command -v termux-media-scan >/dev/null && timeout 20 termux-media-scan -r "$dir" >/dev/null 2>&1
+    ok "Tayyor! Galereyada yoki «Fayllar → Download → YouTube» da."
+  fi
+  return $rc
+}
+
+main() {
+  case "${1:-}" in
+    -h|--help|yordam|help) usage; return 0 ;;
+    -v|--version) echo "yt $YT_VERSION"; return 0 ;;
+    yangilash|update|-U) update_ytdlp; update_self; return ;;
+    yangilash-ytdlp) update_ytdlp; return ;;
+  esac
+  command -v "$PY" >/dev/null || { err "Python topilmadi. Avval oʻrnatuvchini ishga tushiring."; return 1; }
+  "$PY" -c "import yt_dlp" 2>/dev/null || update_ytdlp || return 1
+
+  local raw="${1:-}" url mode="${2:-}"
+  [ -z "$raw" ] && raw=$(ask "YouTube havolasini qoʻying: ")
+  url=$(clean_url "$raw")
+  [ -n "$url" ] || { err "Havola topilmadi: ${raw:-(boʻsh)}"; return 2; }
+  is_youtube "$url" || warn "Bu YouTube havolasi emas — baribir urinib koʻramiz (yt-dlp koʻp saytlarni biladi)."
+  update_if_old
+  [ -z "$mode" ] && mode=$(choose_mode)
+  download "$url" "$mode"
+}
+
+main "$@"

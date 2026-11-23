@@ -47,6 +47,19 @@ Pleylist havolasida «faqat shu video» yoki «butun pleylist» soʻraladi. Pley
 
 **Fayllar:** `Download/YouTube` (audio — `Download/YouTube/Audio`). Galereyada «YouTube» albomi boʻlib koʻrinadi.
 
+## 4. Bosh ekran tugmasi (ixtiyoriy)
+
+Havolani nusxalaysiz va bosh ekrandagi qizil tugmani bosasiz: Termux oʻzi ochilib, sifatni soʻraydi.
+
+1. F-Droid'dan yana ikkita kichik ilova oʻrnating (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan — aks holda ishlamaydi):
+   - **Termux:Widget** — https://f-droid.org/packages/com.termux.widget/
+   - **Termux:API** — https://f-droid.org/packages/com.termux.api/ (nusxalangan havolani oʻqish uchun)
+2. Termux'da bir marta yozing: `yt tugma` (yangi oʻrnatishda bu oʻzi bajariladi).
+3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang.
+4. Telefon sozlamalari → Ilovalar → Termux → **Boshqa ilovalar ustidan koʻrsatish** → yoqing. Busiz tugma bosilganda Termux oʻzi ochilmaydi (Android 10+).
+
+Ishlatish: YouTube'da **Ulashish → Nusxa olish**, keyin tugmani bosing. Buferda havola boʻlmasa, Termux havolani soʻraydi.
+
 ## Bilib qoʻying
 
 - **MKV fayllar.** YouTube 4K ni VP9/AV1 kodekida beradi, ular MP4 ga emas, MKV ga joylanadi. Koʻp telefonlarning galereyasi MKV ni ochadi; ochmasa — **VLC** (Play Market, bepul). Galereyada albatta ochilishi kerak boʻlsa — **2** ni tanlang.
@@ -64,7 +77,7 @@ Faqat oʻzingiz koʻrish uchun yuklang. Mualliflik huquqi bilan himoyalangan vid
 ## Oʻchirish
 
 ```sh
-rm -f $PREFIX/bin/yt ~/bin/termux-url-opener
+rm -f $PREFIX/bin/yt ~/bin/termux-url-opener ~/.shortcuts/YouTube-yuklash ~/.shortcuts/icons/YouTube-yuklash.png
 pip uninstall -y yt-dlp yt-dlp-ejs
 ```
 
@@ -75,3 +88,4 @@ pip uninstall -y yt-dlp yt-dlp-ejs
 | `install.sh` | Oʻrnatuvchi: Termux paketlari, `yt`, ulashish tugmasi, xotira ruxsati |
 | `yt` | Asosiy buyruq: menyu, sifat tanlash, yuklash, xatolarni tushuntirish, yangilash |
 | `termux-url-opener` | «Ulashish → Termux» bosilganda havolani `yt` ga beradi (`~/bin/` ga oʻrnatiladi) |
+| `tugma`, `tugma.png` | Bosh ekran tugmasi va uning belgisi (`yt tugma` → `~/.shortcuts/YouTube-yuklash`) |

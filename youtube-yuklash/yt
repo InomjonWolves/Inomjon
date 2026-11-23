@@ -5,16 +5,18 @@
 #   yt <havola>         sifatni tanlash menyusi
 #   yt <havola> 1..4    darhol: 1 eng yuqori, 2 MP4, 3 720p, 4 audio
 #   yt yangilash        yt-dlp va shu skriptni yangilash
+#   yt tugma            bosh ekran tugmasi (Termux:Widget): nusxalangan havolani yuklaydi
 #   yt yordam           qisqa yordam
 #
 # YouTube ilovasida «Ulashish → Termux» ham shu skriptni ochadi (~/bin/termux-url-opener).
 # Ichida yt-dlp (ochiq kodli yuklovchi) va ffmpeg (video + audioni birlashtiradi) ishlaydi.
 
-YT_VERSION="1.0"
+YT_VERSION="1.1"
 YT_BASE="${YT_BASE:-https://raw.githubusercontent.com/InomjonWolves/Inomjon/ccr-dc03c86a-hhey2p/youtube-yuklash}"
 PY="${YT_PYTHON:-python}"
 STATE="$HOME/.local/state/yt"
 UPDATE_DAYS=5   # YouTube tez-tez oʻzgaradi — yt-dlp shuncha kunda bir yangilanadi
+BTN="YouTube-yuklash"   # bosh ekran tugmasining nomi (~/.shortcuts/ dagi fayl)
 
 if [ -t 1 ]; then
   B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' C=$'\e[36m' D=$'\e[2m' N=$'\e[0m'
@@ -44,8 +46,10 @@ ${B}yt${N} — YouTube'dan telefonga eng yuqori sifatda yuklash  ${D}(v$YT_VERSI
   yt <havola> 3       720p — kam joy egallaydi
   yt <havola> 4       faqat audio (M4A)
   yt yangilash        yt-dlp va shu skriptni yangilash
+  yt tugma            bosh ekran tugmasini oʻrnatish
 
-Eng oson yoʻli: YouTube'da ${B}Ulashish → Termux${N}.
+Eng oson yoʻli: YouTube'da ${B}Ulashish → Termux${N}
+yoki havolani nusxalab, bosh ekrandagi ${B}$BTN${N} tugmasini bosing.
 Fayllar: ${B}Download/YouTube${N} (audio — Download/YouTube/Audio).
 EOF
 }
@@ -95,6 +99,45 @@ update_self() {
   mv -f "$tmp/yt" "$dst" && mv -f "$tmp/termux-url-opener" "$HOME/bin/termux-url-opener"
   rm -rf "$tmp"
   ok "Skript yangilandi: $("$dst" --version 2>/dev/null)"
+  [ -e "$HOME/.shortcuts/$BTN" ] && "$dst" tugma >/dev/null
+  return 0
+}
+
+# Bosh ekran tugmasi: Termux:Widget ~/.shortcuts/ dagi skriptlarni tugma qilib koʻrsatadi.
+install_button() {
+  local sc="$HOME/.shortcuts" tmp
+  tmp=$(mktemp -d)
+  if ! { curl -fsSL "$YT_BASE/tugma" -o "$tmp/tugma" && bash -n "$tmp/tugma"; }; then
+    err "Tugma skriptini yuklab boʻlmadi."; rm -rf "$tmp"; return 1
+  fi
+  curl -fsSL "$YT_BASE/tugma.png" -o "$tmp/tugma.png" || warn "Tugma belgisi yuklanmadi — oddiy belgi boʻladi."
+  mkdir -p "$sc/icons" && chmod 700 "$sc" "$sc/icons"
+  chmod 700 "$tmp/tugma"
+  command -v termux-fix-shebang >/dev/null && termux-fix-shebang "$tmp/tugma"
+  mv -f "$tmp/tugma" "$sc/$BTN"
+  [ -s "$tmp/tugma.png" ] && mv -f "$tmp/tugma.png" "$sc/icons/$BTN.png" && chmod 600 "$sc/icons/$BTN.png"
+  rm -rf "$tmp"
+  # Nusxalangan havolani oʻqish uchun (Termux:API ilovasi bilan ishlaydi).
+  if ! command -v termux-clipboard-get >/dev/null && command -v pkg >/dev/null; then
+    say "termux-api paketi oʻrnatilmoqda…"
+    yes | pkg install -y termux-api >/dev/null 2>&1 || warn "termux-api oʻrnatilmadi: pkg install termux-api"
+  fi
+  # Ochiq vidjetlar roʻyxatini yangilash (Termux:Widget boʻlmasa — jim oʻtadi).
+  command -v am >/dev/null && timeout 10 am broadcast -n com.termux.widget/.TermuxWidgetProvider \
+    -a com.termux.widget.ACTION_REFRESH_WIDGET --ei appWidgetId 0 >/dev/null 2>&1
+  ok "Tugma tayyor: ~/.shortcuts/$BTN"
+  cat <<EOF
+
+${B}Bosh ekranga qoʻyish (bir marta):${N}
+  1. F-Droid'dan ${B}Termux:Widget${N} va ${B}Termux:API${N} ilovalarini oʻrnating
+     (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan).
+  2. Bosh ekranni bosib turing → ${B}Vidjetlar${N} → ${B}Termux:Widget${N} →
+     «Termux shortcut» ni ekranga torting → ${B}$BTN${N} ni tanlang.
+  3. Telefon sozlamalari → Ilovalar → Termux → ${B}Boshqa ilovalar ustidan koʻrsatish${N} → yoqing
+     (busiz tugma bosilganda Termux oʻzi ochilmaydi).
+
+${B}Ishlatish:${N} YouTube'da Ulashish → ${B}Nusxa olish${N}, keyin tugmani bosing.
+EOF
 }
 
 # ---------- papka ----------
@@ -283,6 +326,7 @@ main() {
     -v|--version) echo "yt $YT_VERSION"; return 0 ;;
     yangilash|update|-U) update_ytdlp; update_self; return ;;
     yangilash-ytdlp) update_ytdlp; return ;;
+    tugma|widget) install_button; return ;;
   esac
   command -v "$PY" >/dev/null || { err "Python topilmadi. Avval oʻrnatuvchini ishga tushiring."; return 1; }
   "$PY" -c "import yt_dlp" 2>/dev/null || update_ytdlp || return 1

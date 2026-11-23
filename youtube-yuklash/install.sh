@@ -48,6 +48,7 @@ main() {
   mv -f "$tmp/termux-url-opener" "$opener"
   rm -rf "$tmp"
   "$BIN/yt" yangilash-ytdlp || die "yt-dlp ni oʻrnatib boʻlmadi."
+  "$BIN/yt" tugma >/dev/null || echo "Bosh ekran tugmasi oʻrnatilmadi — keyin: yt tugma"
 
   say "4/4 Xotiraga ruxsat…"
   if [ -d /storage/emulated/0/Download ] && [ -w /storage/emulated/0/Download ]; then
@@ -67,6 +68,7 @@ main() {
   cat <<EOF
 ${B}Qanday ishlatiladi:${N}
   • YouTube ilovasida videoni oching → ${B}Ulashish${N} → ${B}Termux${N} → sifatni tanlang.
+  • Yoki havolani nusxalab, bosh ekrandagi tugmani bosing — sozlash: ${B}yt tugma${N}
   • Yoki Termux'da yozing:  ${B}yt <havola>${N}
   • Fayllar: ${B}Download/YouTube${N} (galereyada ham koʻrinadi).
   • Yangilash:  ${B}yt yangilash${N}     Yordam:  ${B}yt yordam${N}

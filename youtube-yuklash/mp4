@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# mp4 — MKV (va WEBM) videolarni sifatini yoʻqotmasdan MP4 ga oʻtkazish (Termux).
+#
+#   mp4                  Download/YouTube dagi barcha MKV/WEBM fayllar
+#   mp4 <fayl|papka> …   tanlangan fayllar yoki papkalar
+#   mp4 -o …             oʻtkazilgach, asl faylni oʻchirish (tekshiruvdan keyin)
+#   mp4 -k …             asl faylni saqlash (soʻramaydi)
+#   mp4 --asl-audio …    audioni ham oʻzgartirmaslik (Opus); baʼzi pleyerlarda ovoz chiqmasligi mumkin
+#
+# Video QAYTA KODLANMAYDI: oqim MKV ichidan MP4 ichiga aynan koʻchiriladi (piksel ham oʻzgarmaydi,
+# 4K/8K, HDR, 60 fps saqlanadi). Opus audio istalgan pleyerda ochilishi uchun AAC 256 kbit/s ga
+# oʻtkaziladi — bu YouTube'ning 160 kbit/s Opus ovozidan quloqqa farqsiz.
+
+if [ -t 1 ]; then
+  B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' C=$'\e[36m' D=$'\e[2m' N=$'\e[0m'
+else
+  B="" G="" Y="" R="" C="" D="" N=""
+fi
+say()  { printf '%s\n' "${C}›${N} $*"; }
+ok()   { printf '%s\n' "${G}✔${N} $*"; }
+warn() { printf '%s\n' "${Y}!${N} $*"; }
+err()  { printf '%s\n' "${R}✖ $*${N}" >&2; }
+ask() {
+  local _a
+  if ( : </dev/tty ) 2>/dev/null; then read -r -p "$1" _a </dev/tty || _a=""; fi
+  printf '%s' "$_a"
+}
+human() { awk -v b="$1" 'BEGIN { split("B KB MB GB TB", u); i = 1; while (b >= 1024 && i < 5) { b /= 1024; i++ }; printf (i > 2 ? "%.1f %s" : "%d %s"), b, u[i] }'; }
+fsize() { stat -c %s "$1" 2>/dev/null || wc -c <"$1"; }
+dur()   { ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$1" 2>/dev/null | cut -d. -f1; }
+codec() { ffprobe -v error -select_streams "$1" -show_entries stream=codec_name -of csv=p=0 "$2" 2>/dev/null | head -n1; }
+# Video «barmoq izi»: kodek, oʻlcham, davomiylik — bir xil nomli, lekin boshqa sifatdagi MP4 ni ajratish uchun.
+vsig()  { printf '%s %s\n' "$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of csv=p=0 "$1" 2>/dev/null | head -n1)" "$(dur "$1")"; }
+
+usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; }
+
+DEL="" KEEP_AUDIO="" QUIET="" GOT_PATH=""
+FILES=()
+CONVERTED=()   # muvaffaqiyatli oʻtkazilgan asl fayllar
+
+collect() {
+  local p="$1"
+  if [ -d "$p" ]; then
+    while IFS= read -r -d '' f; do FILES+=("$f"); done < <(
+      find "$p" -type f \( -iname '*.mkv' -o -iname '*.webm' \) ! -path '*/.yuklanmoqda/*' -print0 | sort -z)
+  elif [ -f "$p" ]; then
+    FILES+=("$p")
+  else
+    err "Topilmadi: $p"
+  fi
+}
+
+default_dir() {
+  local d
+  for d in ${YT_DIR:+"$YT_DIR"} /storage/emulated/0/Download/YouTube "$HOME/storage/downloads/YouTube"; do
+    [ -d "$d" ] && { echo "$d"; return 0; }
+  done
+  return 1
+}
+
+# Bitta faylni oʻtkazadi. 0 — tayyor (yoki MP4 allaqachon bor), 1 — xato.
+convert() {
+  local in="$1" out tmp v a vargs aargs alabel din dout
+  out="${in%.*}.mp4"
+  tmp="${in%.*}.tmp-mp4"
+  if [ -e "$out" ]; then
+    if [ "$(vsig "$out")" = "$(vsig "$in")" ]; then
+      [ -n "$QUIET" ] || warn "MP4 allaqachon bor: $(basename "$out")"
+      CONVERTED+=("$in"); return 0
+    fi
+    # Shu nomda boshqa sifatdagi MP4 bor (masalan, 1080p) — ustiga yozmaymiz.
+    out="${in%.*} ($(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$in" | head -n1)p).mp4"
+    if [ -e "$out" ] && [ "$(vsig "$out")" = "$(vsig "$in")" ]; then
+      [ -n "$QUIET" ] || warn "MP4 allaqachon bor: $(basename "$out")"
+      CONVERTED+=("$in"); return 0
+    fi
+  fi
+  v=$(codec v:0 "$in"); a=$(codec a:0 "$in")
+  [ -n "$v" ] || { err "Video oqimi topilmadi: $(basename "$in")"; return 1; }
+  case "$v" in
+    h264|hevc|vp9|av1) vargs=(-c:v copy) ;;
+    *) err "$(basename "$in"): $v kodekini MP4 ga sifatni yoʻqotmasdan koʻchirib boʻlmaydi — oʻtkazib yuborildi."
+       return 1 ;;
+  esac
+  [ "$v" = hevc ] && vargs+=(-tag:v hvc1)   # iPhone va baʼzi pleyerlar uchun
+  if [ -z "$a" ]; then
+    aargs=(); alabel="yoʻq"
+  elif [ "$a" = aac ] || [ "$a" = mp3 ] || { [ -n "$KEEP_AUDIO" ] && [ "$a" != vorbis ]; }; then
+    aargs=(-map "0:a?" -c:a copy); alabel="$a, oʻzgarmaydi"
+  else
+    aargs=(-map "0:a?" -c:a aac -b:a 256k); alabel="$a → AAC 256k"
+  fi
+
+  # Joy: natija taxminan asl fayl hajmicha boʻladi.
+  local need free
+  need=$(( $(fsize "$in") / 1024 + 10240 ))
+  free=$(df -Pk "$(dirname "$in")" 2>/dev/null | awk 'NR==2 {print $4}')
+  if [ -n "$free" ] && [ "$free" -lt "$need" ]; then
+    err "Joy yetmaydi: $(basename "$in") uchun ~$(human $((need * 1024))) kerak, boʻsh: $(human $((free * 1024)))."
+    return 1
+  fi
+
+  say "$(basename "$in")  ${D}(video: $v, oʻzgarmaydi · audio: $alabel)${N}"
+  rm -f "$tmp"
+  if ! ffmpeg -nostdin -hide_banner -loglevel error -stats -i "$in" \
+      -map 0:v:0 "${vargs[@]}" "${aargs[@]}" \
+      -map_metadata 0 -map_chapters 0 -movflags +faststart -f mp4 "$tmp"; then
+    rm -f "$tmp"; err "Oʻtkazib boʻlmadi: $(basename "$in")"; return 1
+  fi
+  # Tekshiruv: davomiylik bir xil va video oqimi joyida boʻlishi kerak.
+  din=$(dur "$in"); dout=$(dur "$tmp")
+  if [ -z "$(codec v:0 "$tmp")" ] || [ -z "$dout" ] || { [ -n "$din" ] && [ $((din - dout)) -gt 2 ]; }; then
+    rm -f "$tmp"; err "Natija tekshiruvdan oʻtmadi (davomiylik: ${din:-?} → ${dout:-?} s): $(basename "$in")"; return 1
+  fi
+  touch -r "$in" "$tmp" 2>/dev/null
+  mv -f "$tmp" "$out"
+  ok "$(basename "$out")  ${D}$(human "$(fsize "$out")")${N}"
+  CONVERTED+=("$in")
+}
+
+main() {
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      -h|--help|yordam) usage; return 0 ;;
+      -o|--ochir) DEL=1 ;;
+      -k|--saqla) DEL=0 ;;
+      -q) QUIET=1 ;;
+      --asl-audio) KEEP_AUDIO=1 ;;
+      *) GOT_PATH=1; collect "$arg" ;;
+    esac
+  done
+  command -v ffmpeg >/dev/null || { err "ffmpeg topilmadi: pkg install ffmpeg"; return 1; }
+  if [ -z "$GOT_PATH" ]; then
+    local d
+    d=$(default_dir) || { err "Download/YouTube papkasi topilmadi. Faylni koʻrsating: mp4 <fayl.mkv>"; return 1; }
+    collect "$d"
+  fi
+  if [ ${#FILES[@]} -eq 0 ]; then
+    ok "Oʻtkaziladigan MKV/WEBM fayl yoʻq."; return 0
+  fi
+
+  [ -n "$QUIET" ] || say "${B}${#FILES[@]}${N} ta fayl MP4 ga oʻtkaziladi (video sifati oʻzgarmaydi)."
+  command -v termux-wake-lock >/dev/null && termux-wake-lock 2>/dev/null
+  local f fail=0
+  for f in "${FILES[@]}"; do convert "$f" || fail=$((fail + 1)); done
+  command -v termux-wake-unlock >/dev/null && termux-wake-unlock 2>/dev/null
+
+  # Asl fayllar: faqat tekshiruvdan oʻtganlari oʻchirilishi mumkin.
+  if [ ${#CONVERTED[@]} -gt 0 ]; then
+    local total=0 x
+    for x in "${CONVERTED[@]}"; do total=$((total + $(fsize "$x"))); done
+    if [ -z "$DEL" ]; then
+      local ans
+      ans=$(ask "Asl MKV/WEBM fayllar oʻchirilsinmi? ${#CONVERTED[@]} ta, $(human $total) boʻshaydi (ha/yoʻq) [yoʻq]: ")
+      case "$ans" in ha|h|Ha|HA|y|yes|1) DEL=1 ;; *) DEL=0 ;; esac
+    fi
+    if [ "$DEL" = 1 ]; then
+      rm -f -- "${CONVERTED[@]}" && ok "Asl fayllar oʻchirildi, $(human $total) boʻshadi."
+    fi
+  fi
+  if [ $fail -gt 0 ]; then
+    warn "$fail ta fayl oʻtkazilmadi (yuqoridagi xabarlarga qarang)."; return 1
+  fi
+  [ -n "$QUIET" ] || ok "Tayyor! MP4 fayllar oʻsha papkada."
+}
+
+main "$@"

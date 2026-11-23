@@ -33,7 +33,7 @@ main() {
   say "3/4 yt buyrugʻi oʻrnatilmoqda…"
   local tmp f
   tmp=$(mktemp -d)
-  for f in yt termux-url-opener; do
+  for f in yt termux-url-opener mp4; do
     curl -fsSL "$BASE/$f" -o "$tmp/$f" || die "$f ni yuklab boʻlmadi: $BASE/$f"
     bash -n "$tmp/$f" || die "$f buzuq holda keldi — qayta urining."
     chmod +x "$tmp/$f"
@@ -45,6 +45,7 @@ main() {
     cp "$opener" "$opener.eski" && echo "Avvalgi termux-url-opener saqlandi: $opener.eski"
   fi
   mv -f "$tmp/yt" "$BIN/yt"
+  mv -f "$tmp/mp4" "$BIN/mp4"
   mv -f "$tmp/termux-url-opener" "$opener"
   rm -rf "$tmp"
   "$BIN/yt" yangilash-ytdlp || die "yt-dlp ni oʻrnatib boʻlmadi."
@@ -71,6 +72,7 @@ ${B}Qanday ishlatiladi:${N}
   • Yoki havolani nusxalab, bosh ekrandagi tugmani bosing — sozlash: ${B}yt tugma${N}
   • Yoki Termux'da yozing:  ${B}yt <havola>${N}
   • Fayllar: ${B}Download/YouTube${N} (galereyada ham koʻrinadi).
+  • Eski MKV videolarni MP4 ga (sifat oʻzgarmaydi):  ${B}mp4${N}
   • Yangilash:  ${B}yt yangilash${N}     Yordam:  ${B}yt yordam${N}
 EOF
 }

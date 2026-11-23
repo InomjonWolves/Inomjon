@@ -29,17 +29,19 @@ curl -fsSL https://raw.githubusercontent.com/InomjonWolves/Inomjon/ccr-dc03c86a-
 
 | | Nima yuklanadi | Qachon |
 |---|---|---|
-| **1** | Eng yuqori sifat: 4K/8K, 60 fps, HDR (bor boʻlsa) | Standart. Fayl koʻpincha `.mkv` boʻladi |
-| **2** | MP4, 1080p gacha (H.264) | Istalgan pleyer, messenjer, televizorda ochilishi kerak boʻlsa |
-| **3** | 720p MP4 | Joy va internetni tejash |
-| **4** | Faqat audio, M4A, muqova rasmi bilan | Musiqa, podkast |
+| **1** | Eng yuqori sifat: 4K/8K, 60 fps, HDR — **MP4** da | Standart |
+| **2** | Eng yuqori sifat, **MKV** da (asl holicha) | MKV kerak boʻlsa |
+| **3** | MP4 1080p (H.264) | Eski telefon, televizor — eng keng mos |
+| **4** | 720p MP4 | Joy va internetni tejash |
+| **5** | Faqat audio, M4A, muqova rasmi bilan | Musiqa, podkast |
 
 Yoki Termux'da yozing:
 
 ```sh
 yt https://youtu.be/…        # sifatni soʻraydi
-yt https://youtu.be/… 1      # darhol eng yuqori sifat
-yt yangilash                 # yt-dlp va shu skriptni yangilash
+yt https://youtu.be/… 1      # darhol eng yuqori sifat (MP4)
+mp4                          # Download/YouTube dagi MKV larni MP4 ga
+yt yangilash                 # yt-dlp va skriptlarni yangilash
 yt yordam
 ```
 
@@ -47,22 +49,33 @@ Pleylist havolasida «faqat shu video» yoki «butun pleylist» soʻraladi. Pley
 
 **Fayllar:** `Download/YouTube` (audio — `Download/YouTube/Audio`). Galereyada «YouTube» albomi boʻlib koʻrinadi.
 
-## 4. Bosh ekran tugmasi (ixtiyoriy)
+## 4. MKV → MP4 (sifat oʻzgarmaydi)
 
-Havolani nusxalaysiz va bosh ekrandagi qizil tugmani bosasiz: Termux oʻzi ochilib, sifatni soʻraydi.
+Oldin MKV boʻlib yuklangan videolarni MP4 ga oʻtkazish uchun Termux'da `mp4` deb yozing (yoki bosh ekrandagi yashil **MKV-dan-MP4** tugmasini bosing):
+
+- **Video qayta kodlanmaydi** — oqim MKV ichidan MP4 ichiga aynan koʻchiriladi: 4K/8K, HDR, 60 fps, boblar va nom saqlanadi, bir necha soniyada tugaydi.
+- Opus ovoz istalgan pleyerda ochilishi uchun AAC 256 kbit/s ga oʻtkaziladi (YouTube'ning 160 kbit/s ovozidan quloqqa farqsiz). Ovozni ham tegmasdan qoldirish: `mp4 --asl-audio`.
+- Har bir natija tekshiriladi (davomiylik, video oqimi); oxirida asl MKV larni oʻchirish soʻraladi — faqat tekshiruvdan oʻtganlari oʻchadi. Soʻramasdan: `mp4 -o` (oʻchirish) yoki `mp4 -k` (saqlash).
+- Bitta fayl yoki boshqa papka: `mp4 /storage/emulated/0/Download/video.mkv`.
+- Shu nomda boshqa sifatdagi MP4 bor boʻlsa (masalan, 1080p), ustiga yozilmaydi — yangisi `… (2160p).mp4` boʻladi.
+- Faqat VP8 kodekli eski videolarni sifat yoʻqotmasdan oʻtkazib boʻlmaydi — ular oʻtkazib yuboriladi.
+
+## 5. Bosh ekran tugmalari (ixtiyoriy)
+
+Qizil **YouTube-yuklash** — nusxalangan havolani yuklaydi. Yashil **MKV-dan-MP4** — papkadagi MKV larni MP4 ga oʻtkazadi.
 
 1. F-Droid'dan yana ikkita kichik ilova oʻrnating (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan — aks holda ishlamaydi):
    - **Termux:Widget** — https://f-droid.org/packages/com.termux.widget/
    - **Termux:API** — https://f-droid.org/packages/com.termux.api/ (nusxalangan havolani oʻqish uchun)
 2. Termux'da bir marta yozing: `yt tugma` (yangi oʻrnatishda bu oʻzi bajariladi).
-3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang.
+3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang. Ikkinchi tugma uchun yana bir marta — **MKV-dan-MP4**.
 4. Telefon sozlamalari → Ilovalar → Termux → **Boshqa ilovalar ustidan koʻrsatish** → yoqing. Busiz tugma bosilganda Termux oʻzi ochilmaydi (Android 10+).
 
 Ishlatish: YouTube'da **Ulashish → Nusxa olish**, keyin tugmani bosing. Buferda havola boʻlmasa, Termux havolani soʻraydi.
 
 ## Bilib qoʻying
 
-- **MKV fayllar.** YouTube 4K ni VP9/AV1 kodekida beradi, ular MP4 ga emas, MKV ga joylanadi. Koʻp telefonlarning galereyasi MKV ni ochadi; ochmasa — **VLC** (Play Market, bepul). Galereyada albatta ochilishi kerak boʻlsa — **2** ni tanlang.
+- **4K MP4 va eski qurilmalar.** 4K video VP9 yoki AV1 kodekida boʻladi (YouTube H.264 da 1080p dan yuqorisini bermaydi). Android 10+ telefonlar ularni ochadi; eski televizor yoki pleyer ochmasa — **VLC** yoki **3** (1080p H.264).
 - **4K hajmi katta:** 10 daqiqalik 4K video ~1–2 GB. Yuklashdan oldin taxminiy hajm koʻrsatiladi.
 - **Ekran oʻchsa ham** yuklash davom etadi (Termux «wake lock» oladi). Termux'ni yopmang.
 - **YouTube oʻzgarsa**, yt-dlp har 5 kunda oʻzi yangilanadi; xato boʻlsa — yangilab, yana bir marta urinadi. Qoʻlda: `yt yangilash`.
@@ -77,7 +90,8 @@ Faqat oʻzingiz koʻrish uchun yuklang. Mualliflik huquqi bilan himoyalangan vid
 ## Oʻchirish
 
 ```sh
-rm -f $PREFIX/bin/yt ~/bin/termux-url-opener ~/.shortcuts/YouTube-yuklash ~/.shortcuts/icons/YouTube-yuklash.png
+rm -f $PREFIX/bin/yt $PREFIX/bin/mp4 ~/bin/termux-url-opener
+rm -f ~/.shortcuts/YouTube-yuklash ~/.shortcuts/MKV-dan-MP4 ~/.shortcuts/icons/YouTube-yuklash.png ~/.shortcuts/icons/MKV-dan-MP4.png
 pip uninstall -y yt-dlp yt-dlp-ejs
 ```
 
@@ -88,4 +102,6 @@ pip uninstall -y yt-dlp yt-dlp-ejs
 | `install.sh` | Oʻrnatuvchi: Termux paketlari, `yt`, ulashish tugmasi, xotira ruxsati |
 | `yt` | Asosiy buyruq: menyu, sifat tanlash, yuklash, xatolarni tushuntirish, yangilash |
 | `termux-url-opener` | «Ulashish → Termux» bosilganda havolani `yt` ga beradi (`~/bin/` ga oʻrnatiladi) |
+| `mp4` | MKV/WEBM → MP4: video qayta kodlanmaydi, natija tekshiriladi |
 | `tugma`, `tugma.png` | Bosh ekran tugmasi va uning belgisi (`yt tugma` → `~/.shortcuts/YouTube-yuklash`) |
+| `tugma-mp4`, `tugma-mp4.png` | Ikkinchi tugma: papkadagi MKV larni MP4 ga (`~/.shortcuts/MKV-dan-MP4`) |

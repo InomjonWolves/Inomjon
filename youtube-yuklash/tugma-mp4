@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Bosh ekran tugmasi (Termux:Widget): Download/YouTube dagi MKV videolarni MP4 ga oʻtkazadi.
+# Video qayta kodlanmaydi — sifat oʻzgarmaydi. Oxirida asl MKV larni oʻchirishni soʻraydi.
+# Oʻrnatiladi: ~/.shortcuts/MKV-dan-MP4, belgisi ~/.shortcuts/icons/MKV-dan-MP4.png
+MP4="${PREFIX:-/data/data/com.termux/files/usr}/bin/mp4"
+command -v mp4 >/dev/null && MP4=$(command -v mp4)
+if [ -x "$MP4" ]; then
+  "$MP4"
+else
+  echo "mp4 buyrugʻi topilmadi. Termux'da yozing: yt yangilash"
+fi
+echo
+( : </dev/tty ) 2>/dev/null && read -r -p "Oynani yopish uchun Enter bosing… " _ </dev/tty

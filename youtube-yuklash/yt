@@ -3,20 +3,22 @@
 #
 #   yt                  havolani soʻraydi
 #   yt <havola>         sifatni tanlash menyusi
-#   yt <havola> 1..4    darhol: 1 eng yuqori, 2 MP4, 3 720p, 4 audio
+#   yt <havola> 1..5    darhol: 1 eng yuqori (MP4), 2 eng yuqori (MKV), 3 MP4 1080p, 4 720p, 5 audio
 #   yt yangilash        yt-dlp va shu skriptni yangilash
-#   yt tugma            bosh ekran tugmasi (Termux:Widget): nusxalangan havolani yuklaydi
+#   yt tugma            bosh ekran tugmalari (Termux:Widget): yuklash va MKV → MP4
+#   mp4                 yuklangan MKV videolarni sifatini yoʻqotmasdan MP4 ga oʻtkazish
 #   yt yordam           qisqa yordam
 #
 # YouTube ilovasida «Ulashish → Termux» ham shu skriptni ochadi (~/bin/termux-url-opener).
 # Ichida yt-dlp (ochiq kodli yuklovchi) va ffmpeg (video + audioni birlashtiradi) ishlaydi.
 
-YT_VERSION="1.1"
+YT_VERSION="1.2"
 YT_BASE="${YT_BASE:-https://raw.githubusercontent.com/InomjonWolves/Inomjon/ccr-dc03c86a-hhey2p/youtube-yuklash}"
 PY="${YT_PYTHON:-python}"
 STATE="$HOME/.local/state/yt"
 UPDATE_DAYS=5   # YouTube tez-tez oʻzgaradi — yt-dlp shuncha kunda bir yangilanadi
 BTN="YouTube-yuklash"   # bosh ekran tugmasining nomi (~/.shortcuts/ dagi fayl)
+BTN2="MKV-dan-MP4"      # ikkinchi tugma: papkadagi MKV larni MP4 ga
 
 if [ -t 1 ]; then
   B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' C=$'\e[36m' D=$'\e[2m' N=$'\e[0m'
@@ -41,12 +43,14 @@ ${B}yt${N} — YouTube'dan telefonga eng yuqori sifatda yuklash  ${D}(v$YT_VERSI
 
   yt                  havolani soʻraydi
   yt <havola>         sifatni tanlaysiz
-  yt <havola> 1       eng yuqori sifat (4K/8K, HDR)
-  yt <havola> 2       MP4 — istalgan pleyerda ochiladi (1080p gacha)
-  yt <havola> 3       720p — kam joy egallaydi
-  yt <havola> 4       faqat audio (M4A)
-  yt yangilash        yt-dlp va shu skriptni yangilash
-  yt tugma            bosh ekran tugmasini oʻrnatish
+  yt <havola> 1       eng yuqori sifat, MP4 (4K/8K, HDR)
+  yt <havola> 2       eng yuqori sifat, MKV (asl holicha)
+  yt <havola> 3       MP4 1080p (H.264) — eski qurilmalar, televizor
+  yt <havola> 4       720p — kam joy egallaydi
+  yt <havola> 5       faqat audio (M4A)
+  yt yangilash        yt-dlp va skriptlarni yangilash
+  yt tugma            bosh ekran tugmalarini oʻrnatish
+  mp4                 Download/YouTube dagi MKV larni MP4 ga (sifat oʻzgarmaydi)
 
 Eng oson yoʻli: YouTube'da ${B}Ulashish → Termux${N}
 yoki havolani nusxalab, bosh ekrandagi ${B}$BTN${N} tugmasini bosing.
@@ -86,37 +90,59 @@ update_if_old() {
 update_self() {
   local tmp f dst
   tmp=$(mktemp -d)
-  for f in yt termux-url-opener; do
+  for f in yt termux-url-opener mp4; do
     curl -fsSL "$YT_BASE/$f" -o "$tmp/$f" && bash -n "$tmp/$f" || { err "$f ni yuklab boʻlmadi."; rm -rf "$tmp"; return 1; }
   done
   dst=$(command -v yt || echo "${PREFIX:-/usr}/bin/yt")
   mkdir -p "$HOME/bin"
-  for f in yt termux-url-opener; do
+  for f in yt termux-url-opener mp4; do
     chmod +x "$tmp/$f"
     command -v termux-fix-shebang >/dev/null && termux-fix-shebang "$tmp/$f"
   done
   # mv — yangi fayl: hozir ishlab turgan skript buzilmaydi.
-  mv -f "$tmp/yt" "$dst" && mv -f "$tmp/termux-url-opener" "$HOME/bin/termux-url-opener"
+  mv -f "$tmp/yt" "$dst" && mv -f "$tmp/termux-url-opener" "$HOME/bin/termux-url-opener" \
+    && mv -f "$tmp/mp4" "$(dirname "$dst")/mp4"
   rm -rf "$tmp"
   ok "Skript yangilandi: $("$dst" --version 2>/dev/null)"
   [ -e "$HOME/.shortcuts/$BTN" ] && "$dst" tugma >/dev/null
   return 0
 }
 
-# Bosh ekran tugmasi: Termux:Widget ~/.shortcuts/ dagi skriptlarni tugma qilib koʻrsatadi.
-install_button() {
-  local sc="$HOME/.shortcuts" tmp
-  tmp=$(mktemp -d)
-  if ! { curl -fsSL "$YT_BASE/tugma" -o "$tmp/tugma" && bash -n "$tmp/tugma"; }; then
-    err "Tugma skriptini yuklab boʻlmadi."; rm -rf "$tmp"; return 1
+# mp4 buyrugʻi (MKV → MP4) — yoʻq boʻlsa yuklab oʻrnatadi.
+ensure_mp4() {
+  command -v mp4 >/dev/null && return 0
+  local dst tmp
+  dst="$(dirname "$(command -v yt || echo "${PREFIX:-/usr}/bin/yt")")/mp4"
+  tmp=$(mktemp)
+  if curl -fsSL "$YT_BASE/mp4" -o "$tmp" && bash -n "$tmp"; then
+    chmod +x "$tmp"
+    command -v termux-fix-shebang >/dev/null && termux-fix-shebang "$tmp"
+    mv -f "$tmp" "$dst" && return 0
   fi
-  curl -fsSL "$YT_BASE/tugma.png" -o "$tmp/tugma.png" || warn "Tugma belgisi yuklanmadi — oddiy belgi boʻladi."
+  rm -f "$tmp"; warn "mp4 buyrugʻini yuklab boʻlmadi: yt yangilash"; return 1
+}
+
+# Bitta tugma: skript va belgisini ~/.shortcuts/ ga qoʻyadi.
+put_button() {
+  local src="$1" name="$2" sc="$HOME/.shortcuts" tmp
+  tmp=$(mktemp -d)
+  if ! { curl -fsSL "$YT_BASE/$src" -o "$tmp/s" && bash -n "$tmp/s"; }; then
+    err "$name tugmasini yuklab boʻlmadi."; rm -rf "$tmp"; return 1
+  fi
+  curl -fsSL "$YT_BASE/$src.png" -o "$tmp/s.png" || warn "$name belgisi yuklanmadi — oddiy belgi boʻladi."
   mkdir -p "$sc/icons" && chmod 700 "$sc" "$sc/icons"
-  chmod 700 "$tmp/tugma"
-  command -v termux-fix-shebang >/dev/null && termux-fix-shebang "$tmp/tugma"
-  mv -f "$tmp/tugma" "$sc/$BTN"
-  [ -s "$tmp/tugma.png" ] && mv -f "$tmp/tugma.png" "$sc/icons/$BTN.png" && chmod 600 "$sc/icons/$BTN.png"
+  chmod 700 "$tmp/s"
+  command -v termux-fix-shebang >/dev/null && termux-fix-shebang "$tmp/s"
+  mv -f "$tmp/s" "$sc/$name"
+  [ -s "$tmp/s.png" ] && mv -f "$tmp/s.png" "$sc/icons/$name.png" && chmod 600 "$sc/icons/$name.png"
   rm -rf "$tmp"
+}
+
+# Bosh ekran tugmalari: Termux:Widget ~/.shortcuts/ dagi skriptlarni tugma qilib koʻrsatadi.
+install_button() {
+  ensure_mp4
+  put_button tugma "$BTN" || return 1
+  put_button tugma-mp4 "$BTN2"
   # Nusxalangan havolani oʻqish uchun (Termux:API ilovasi bilan ishlaydi).
   if ! command -v termux-clipboard-get >/dev/null && command -v pkg >/dev/null; then
     say "termux-api paketi oʻrnatilmoqda…"
@@ -125,18 +151,20 @@ install_button() {
   # Ochiq vidjetlar roʻyxatini yangilash (Termux:Widget boʻlmasa — jim oʻtadi).
   command -v am >/dev/null && timeout 10 am broadcast -n com.termux.widget/.TermuxWidgetProvider \
     -a com.termux.widget.ACTION_REFRESH_WIDGET --ei appWidgetId 0 >/dev/null 2>&1
-  ok "Tugma tayyor: ~/.shortcuts/$BTN"
+  ok "Tugmalar tayyor: $BTN, $BTN2"
   cat <<EOF
 
 ${B}Bosh ekranga qoʻyish (bir marta):${N}
   1. F-Droid'dan ${B}Termux:Widget${N} va ${B}Termux:API${N} ilovalarini oʻrnating
      (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan).
   2. Bosh ekranni bosib turing → ${B}Vidjetlar${N} → ${B}Termux:Widget${N} →
-     «Termux shortcut» ni ekranga torting → ${B}$BTN${N} ni tanlang.
+     «Termux shortcut» ni ekranga torting → ${B}$BTN${N} ni tanlang
+     (ikkinchi tugma uchun yana bir marta — ${B}$BTN2${N}).
   3. Telefon sozlamalari → Ilovalar → Termux → ${B}Boshqa ilovalar ustidan koʻrsatish${N} → yoqing
      (busiz tugma bosilganda Termux oʻzi ochilmaydi).
 
-${B}Ishlatish:${N} YouTube'da Ulashish → ${B}Nusxa olish${N}, keyin tugmani bosing.
+${B}Ishlatish:${N} YouTube'da Ulashish → ${B}Nusxa olish${N}, keyin ${B}$BTN${N} ni bosing.
+${B}$BTN2${N} — Download/YouTube dagi MKV videolarni sifatini yoʻqotmasdan MP4 ga oʻtkazadi.
 EOF
 }
 
@@ -177,10 +205,11 @@ choose_mode() {
   {
     echo
     echo "  ${B}Qanday yuklaymiz?${N}"
-    echo "   ${B}1${N}) Eng yuqori sifat — 4K/8K, HDR  ${D}(standart)${N}"
-    echo "   ${B}2${N}) MP4 — istalgan pleyerda ochiladi, 1080p gacha"
-    echo "   ${B}3${N}) 720p — kam joy egallaydi"
-    echo "   ${B}4${N}) Faqat audio — M4A (musiqa)"
+    echo "   ${B}1${N}) Eng yuqori sifat — MP4, 4K/8K, HDR  ${D}(standart)${N}"
+    echo "   ${B}2${N}) Eng yuqori sifat — MKV (asl holicha)"
+    echo "   ${B}3${N}) MP4 1080p — eski telefon va televizorlar uchun"
+    echo "   ${B}4${N}) 720p — kam joy egallaydi"
+    echo "   ${B}5${N}) Faqat audio — M4A (musiqa)"
   } >&2
   local m
   m=$(ask "  Tanlang [1]: ")
@@ -206,28 +235,31 @@ playlist_args() {
 VINFO="%(height|?)sp%(fps|)s %(dynamic_range|)s · %(vcodec.:4|?)s+%(acodec.:4|?)s · ~%(filesize,filesize_approx|?)DB"
 
 mode_args() {
-  # Natija MODE_NAME, OUT_SUB, INFO va FMT massivida.
+  # Natija MODE_NAME, OUT_SUB, INFO, CONVERT va FMT massivida.
+  CONVERT=""
   case "$1" in
-    1|max|eng)
+    1|max|eng|2|mkv)
       MODE_NAME="Eng yuqori sifat"
       OUT_SUB=""
+      # 1 — yuklangach MP4 ga oʻtkaziladi (video qayta kodlanmaydi, faqat koʻchiriladi).
+      case "$1" in 2|mkv) MODE_NAME="$MODE_NAME (MKV)" ;; *) MODE_NAME="$MODE_NAME (MP4)"; CONVERT=1 ;; esac
       # Eng katta oʻlcham, kadr tezligi, HDR; bir xil oʻlchamda VP9 — har bir telefon uni
       # apparat bilan ochadi (AV1 faqat yangi telefonlarda). MP4 ga sigʻmasa — MKV.
       FMT=(-f "bv*+ba/b" -S "res,fps,hdr:12,vcodec:vp9" --merge-output-format "mp4/mkv")
       INFO="$VINFO" ;;
-    2|mp4)
-      MODE_NAME="MP4 (H.264)"
+    3|mp4|h264)
+      MODE_NAME="MP4 1080p (H.264)"
       OUT_SUB=""
       FMT=(-f "bv*+ba/b" -S "vcodec:h264,lang,quality,res,fps,hdr:12,acodec:aac"
            --merge-output-format mp4 --remux-video mp4)
       INFO="$VINFO" ;;
-    3|720)
+    4|720)
       MODE_NAME="720p"
       OUT_SUB=""
       FMT=(-f "bv*+ba/b" -S "res:720,vcodec:h264,acodec:aac"
            --merge-output-format mp4 --remux-video mp4)
       INFO="$VINFO" ;;
-    4|audio|mp3|m4a)
+    5|audio|mp3|m4a)
       MODE_NAME="Audio (M4A)"
       OUT_SUB="/Audio"
       FMT=(-f "ba[ext=m4a]/ba/b" -x --audio-format m4a
@@ -263,7 +295,7 @@ explain() {
 
 download() {
   local url="$1" mode="$2" dir pl log rc
-  mode_args "$mode" || { err "Notoʻgʻri tanlov: $mode (1, 2, 3 yoki 4)"; return 2; }
+  mode_args "$mode" || { err "Notoʻgʻri tanlov: $mode (1–5)"; return 2; }
   dir=$(need_storage) || return 1
   dir="$dir$OUT_SUB"
   mkdir -p "$dir/.yuklanmoqda" && : >"$dir/.yuklanmoqda/.nomedia"
@@ -285,6 +317,11 @@ download() {
     --print "after_move:${G}✔${N} Saqlandi: %(filepath)s"
   )
   [ "$pl" = "--yes-playlist" ] && args+=(--download-archive "$dir/.yuklangan.txt")
+  local done_list=""
+  if [ -n "$CONVERT" ]; then
+    done_list=$(mktemp)
+    args+=(--print-to-file "after_move:filepath" "$done_list")
+  fi
 
   echo >&2
   say "${MODE_NAME} · ${dir#/storage/emulated/0/}"
@@ -312,6 +349,22 @@ download() {
   rm -f "$dir/.yuklanmoqda/.nomedia"
   find "$dir/.yuklanmoqda" -depth -type d -empty -delete 2>/dev/null
   [ -d "$dir/.yuklanmoqda" ] && : >"$dir/.yuklanmoqda/.nomedia"
+  # Eng yuqori sifat MKV/WEBM boʻlib kelgan boʻlsa — MP4 ga (video bitma-bit oʻzgarmaydi).
+  if [ -n "$done_list" ]; then
+    local mk=() f
+    while IFS= read -r f; do
+      case "$f" in *.mkv|*.webm) [ -f "$f" ] && mk+=("$f") ;; esac
+    done <"$done_list"
+    rm -f "$done_list"
+    if [ ${#mk[@]} -gt 0 ]; then
+      if ensure_mp4; then
+        say "MP4 ga oʻtkazilmoqda (video sifati oʻzgarmaydi)…"
+        mp4 -q -o "${mk[@]}" || { warn "MP4 ga oʻtkazib boʻlmadi — video MKV holida qoldi."; }
+      else
+        warn "Video MKV holida saqlandi. Keyin: yt yangilash, soʻng mp4"
+      fi
+    fi
+  fi
   if [ $rc -eq 0 ]; then
     # Android 10 va undan eskisida galereya faylni darhol koʻrsin (Termux:API boʻlsa).
     command -v termux-media-scan >/dev/null && timeout 20 termux-media-scan -r "$dir" >/dev/null 2>&1

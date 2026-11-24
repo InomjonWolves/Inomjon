@@ -73,6 +73,7 @@ ${B}Qanday ishlatiladi:${N}
   • Yoki Termux'da yozing:  ${B}yt <havola>${N}
   • Fayllar: ${B}Download/YouTube${N} (galereyada ham koʻrinadi).
   • Eski MKV videolarni MP4 ga (sifat oʻzgarmaydi):  ${B}mp4${N}
+  • Faqat musiqa (MP3):  ${B}yt <havola> 5${N} yoki bosh ekrandagi ${B}YouTube-MP3${N} tugmasi
   • Yangilash:  ${B}yt yangilash${N}     Yordam:  ${B}yt yordam${N}
 EOF
 }

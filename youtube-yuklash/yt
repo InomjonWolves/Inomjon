@@ -3,7 +3,7 @@
 #
 #   yt                  havolani soʻraydi
 #   yt <havola>         sifatni tanlash menyusi
-#   yt <havola> 1..5    darhol: 1 eng yuqori (MP4), 2 eng yuqori (MKV), 3 MP4 1080p, 4 720p, 5 audio
+#   yt <havola> 1..6    darhol: 1 eng yuqori (MP4), 2 eng yuqori (MKV), 3 MP4 1080p, 4 720p, 5 MP3, 6 M4A
 #   yt yangilash        yt-dlp va shu skriptni yangilash
 #   yt tugma            bosh ekran tugmalari (Termux:Widget): yuklash va MKV → MP4
 #   mp4                 yuklangan MKV videolarni sifatini yoʻqotmasdan MP4 ga oʻtkazish
@@ -12,13 +12,14 @@
 # YouTube ilovasida «Ulashish → Termux» ham shu skriptni ochadi (~/bin/termux-url-opener).
 # Ichida yt-dlp (ochiq kodli yuklovchi) va ffmpeg (video + audioni birlashtiradi) ishlaydi.
 
-YT_VERSION="1.2"
+YT_VERSION="1.3"
 YT_BASE="${YT_BASE:-https://raw.githubusercontent.com/InomjonWolves/Inomjon/ccr-dc03c86a-hhey2p/youtube-yuklash}"
 PY="${YT_PYTHON:-python}"
 STATE="$HOME/.local/state/yt"
 UPDATE_DAYS=5   # YouTube tez-tez oʻzgaradi — yt-dlp shuncha kunda bir yangilanadi
 BTN="YouTube-yuklash"   # bosh ekran tugmasining nomi (~/.shortcuts/ dagi fayl)
 BTN2="MKV-dan-MP4"      # ikkinchi tugma: papkadagi MKV larni MP4 ga
+BTN3="YouTube-MP3"      # uchinchi tugma: nusxalangan havoladan musiqa (MP3)
 
 if [ -t 1 ]; then
   B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' C=$'\e[36m' D=$'\e[2m' N=$'\e[0m'
@@ -47,14 +48,15 @@ ${B}yt${N} — YouTube'dan telefonga eng yuqori sifatda yuklash  ${D}(v$YT_VERSI
   yt <havola> 2       eng yuqori sifat, MKV (asl holicha)
   yt <havola> 3       MP4 1080p (H.264) — eski qurilmalar, televizor
   yt <havola> 4       720p — kam joy egallaydi
-  yt <havola> 5       faqat audio (M4A)
+  yt <havola> 5       musiqa — MP3 (eng yuqori sifat)
+  yt <havola> 6       musiqa — M4A (YouTube'ning asl ovozi, oʻzgarishsiz)
   yt yangilash        yt-dlp va skriptlarni yangilash
   yt tugma            bosh ekran tugmalarini oʻrnatish
   mp4                 Download/YouTube dagi MKV larni MP4 ga (sifat oʻzgarmaydi)
 
 Eng oson yoʻli: YouTube'da ${B}Ulashish → Termux${N}
 yoki havolani nusxalab, bosh ekrandagi ${B}$BTN${N} tugmasini bosing.
-Fayllar: ${B}Download/YouTube${N} (audio — Download/YouTube/Audio).
+Fayllar: ${B}Download/YouTube${N} (musiqa — Download/YouTube/Musiqa).
 EOF
 }
 
@@ -143,6 +145,7 @@ install_button() {
   ensure_mp4
   put_button tugma "$BTN" || return 1
   put_button tugma-mp4 "$BTN2"
+  put_button tugma-mp3 "$BTN3"
   # Nusxalangan havolani oʻqish uchun (Termux:API ilovasi bilan ishlaydi).
   if ! command -v termux-clipboard-get >/dev/null && command -v pkg >/dev/null; then
     say "termux-api paketi oʻrnatilmoqda…"
@@ -151,7 +154,7 @@ install_button() {
   # Ochiq vidjetlar roʻyxatini yangilash (Termux:Widget boʻlmasa — jim oʻtadi).
   command -v am >/dev/null && timeout 10 am broadcast -n com.termux.widget/.TermuxWidgetProvider \
     -a com.termux.widget.ACTION_REFRESH_WIDGET --ei appWidgetId 0 >/dev/null 2>&1
-  ok "Tugmalar tayyor: $BTN, $BTN2"
+  ok "Tugmalar tayyor: $BTN, $BTN2, $BTN3"
   cat <<EOF
 
 ${B}Bosh ekranga qoʻyish (bir marta):${N}
@@ -159,12 +162,13 @@ ${B}Bosh ekranga qoʻyish (bir marta):${N}
      (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan).
   2. Bosh ekranni bosib turing → ${B}Vidjetlar${N} → ${B}Termux:Widget${N} →
      «Termux shortcut» ni ekranga torting → ${B}$BTN${N} ni tanlang
-     (ikkinchi tugma uchun yana bir marta — ${B}$BTN2${N}).
+     (qolgan tugmalar uchun yana: ${B}$BTN2${N}, ${B}$BTN3${N}).
   3. Telefon sozlamalari → Ilovalar → Termux → ${B}Boshqa ilovalar ustidan koʻrsatish${N} → yoqing
      (busiz tugma bosilganda Termux oʻzi ochilmaydi).
 
 ${B}Ishlatish:${N} YouTube'da Ulashish → ${B}Nusxa olish${N}, keyin ${B}$BTN${N} ni bosing.
 ${B}$BTN2${N} — Download/YouTube dagi MKV videolarni sifatini yoʻqotmasdan MP4 ga oʻtkazadi.
+${B}$BTN3${N} — nusxalangan havoladan faqat musiqani MP3 qilib yuklaydi (Download/YouTube/Musiqa).
 EOF
 }
 
@@ -209,7 +213,8 @@ choose_mode() {
     echo "   ${B}2${N}) Eng yuqori sifat — MKV (asl holicha)"
     echo "   ${B}3${N}) MP4 1080p — eski telefon va televizorlar uchun"
     echo "   ${B}4${N}) 720p — kam joy egallaydi"
-    echo "   ${B}5${N}) Faqat audio — M4A (musiqa)"
+    echo "   ${B}5${N}) Musiqa — MP3 (faqat ovoz)"
+    echo "   ${B}6${N}) Musiqa — M4A (asl ovoz, oʻzgarishsiz)"
   } >&2
   local m
   m=$(ask "  Tanlang [1]: ")
@@ -259,9 +264,17 @@ mode_args() {
       FMT=(-f "bv*+ba/b" -S "res:720,vcodec:h264,acodec:aac"
            --merge-output-format mp4 --remux-video mp4)
       INFO="$VINFO" ;;
-    5|audio|mp3|m4a)
-      MODE_NAME="Audio (M4A)"
-      OUT_SUB="/Audio"
+    5|mp3)
+      MODE_NAME="Musiqa (MP3)"
+      OUT_SUB="/Musiqa"
+      # --audio-quality 0 — MP3 ning eng yuqori oʻzgaruvchan tezligi (V0, ~245 kbit/s).
+      FMT=(-f "ba/b" -x --audio-format mp3 --audio-quality 0
+           --embed-thumbnail --convert-thumbnails jpg
+           --parse-metadata "%(uploader|)s:%(meta_artist)s")
+      INFO="%(acodec.:4|?)s %(abr|?)d kbit/s → MP3 · ~%(filesize,filesize_approx|?)DB" ;;
+    6|audio|m4a)
+      MODE_NAME="Musiqa (M4A)"
+      OUT_SUB="/Musiqa"
       FMT=(-f "ba[ext=m4a]/ba/b" -x --audio-format m4a
            --embed-thumbnail --convert-thumbnails jpg)
       INFO="%(acodec.:4|?)s · %(abr|?)d kbit/s · ~%(filesize,filesize_approx|?)DB" ;;
@@ -295,7 +308,7 @@ explain() {
 
 download() {
   local url="$1" mode="$2" dir pl log rc
-  mode_args "$mode" || { err "Notoʻgʻri tanlov: $mode (1–5)"; return 2; }
+  mode_args "$mode" || { err "Notoʻgʻri tanlov: $mode (1–6)"; return 2; }
   dir=$(need_storage) || return 1
   dir="$dir$OUT_SUB"
   mkdir -p "$dir/.yuklanmoqda" && : >"$dir/.yuklanmoqda/.nomedia"

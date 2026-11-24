@@ -12,7 +12,7 @@
 # YouTube ilovasida «Ulashish → Termux» ham shu skriptni ochadi (~/bin/termux-url-opener).
 # Ichida yt-dlp (ochiq kodli yuklovchi) va ffmpeg (video + audioni birlashtiradi) ishlaydi.
 
-YT_VERSION="1.3"
+YT_VERSION="1.4"
 YT_BASE="${YT_BASE:-https://raw.githubusercontent.com/InomjonWolves/Inomjon/ccr-dc03c86a-hhey2p/youtube-yuklash}"
 PY="${YT_PYTHON:-python}"
 STATE="$HOME/.local/state/yt"
@@ -20,6 +20,7 @@ UPDATE_DAYS=5   # YouTube tez-tez oʻzgaradi — yt-dlp shuncha kunda bir yangil
 BTN="YouTube-yuklash"   # bosh ekran tugmasining nomi (~/.shortcuts/ dagi fayl)
 BTN2="MKV-dan-MP4"      # ikkinchi tugma: papkadagi MKV larni MP4 ga
 BTN3="YouTube-MP3"      # uchinchi tugma: nusxalangan havoladan musiqa (MP3)
+BTN4="Pinterest-yuklash" # toʻrtinchi tugma: Pinterest videosi
 
 if [ -t 1 ]; then
   B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' C=$'\e[36m' D=$'\e[2m' N=$'\e[0m'
@@ -50,6 +51,7 @@ ${B}yt${N} — YouTube'dan telefonga eng yuqori sifatda yuklash  ${D}(v$YT_VERSI
   yt <havola> 4       720p — kam joy egallaydi
   yt <havola> 5       musiqa — MP3 (eng yuqori sifat)
   yt <havola> 6       musiqa — M4A (YouTube'ning asl ovozi, oʻzgarishsiz)
+  yt <pinterest>      Pinterest videosi — eng yuqori sifatda, menyusiz (Download/YouTube/Pinterest)
   yt yangilash        yt-dlp va skriptlarni yangilash
   yt tugma            bosh ekran tugmalarini oʻrnatish
   mp4                 Download/YouTube dagi MKV larni MP4 ga (sifat oʻzgarmaydi)
@@ -146,6 +148,7 @@ install_button() {
   put_button tugma "$BTN" || return 1
   put_button tugma-mp4 "$BTN2"
   put_button tugma-mp3 "$BTN3"
+  put_button tugma-pin "$BTN4"
   # Nusxalangan havolani oʻqish uchun (Termux:API ilovasi bilan ishlaydi).
   if ! command -v termux-clipboard-get >/dev/null && command -v pkg >/dev/null; then
     say "termux-api paketi oʻrnatilmoqda…"
@@ -154,7 +157,7 @@ install_button() {
   # Ochiq vidjetlar roʻyxatini yangilash (Termux:Widget boʻlmasa — jim oʻtadi).
   command -v am >/dev/null && timeout 10 am broadcast -n com.termux.widget/.TermuxWidgetProvider \
     -a com.termux.widget.ACTION_REFRESH_WIDGET --ei appWidgetId 0 >/dev/null 2>&1
-  ok "Tugmalar tayyor: $BTN, $BTN2, $BTN3"
+  ok "Tugmalar tayyor: $BTN, $BTN2, $BTN3, $BTN4"
   cat <<EOF
 
 ${B}Bosh ekranga qoʻyish (bir marta):${N}
@@ -162,13 +165,14 @@ ${B}Bosh ekranga qoʻyish (bir marta):${N}
      (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan).
   2. Bosh ekranni bosib turing → ${B}Vidjetlar${N} → ${B}Termux:Widget${N} →
      «Termux shortcut» ni ekranga torting → ${B}$BTN${N} ni tanlang
-     (qolgan tugmalar uchun yana: ${B}$BTN2${N}, ${B}$BTN3${N}).
+     (qolgan tugmalar uchun yana: ${B}$BTN2${N}, ${B}$BTN3${N}, ${B}$BTN4${N}).
   3. Telefon sozlamalari → Ilovalar → Termux → ${B}Boshqa ilovalar ustidan koʻrsatish${N} → yoqing
      (busiz tugma bosilganda Termux oʻzi ochilmaydi).
 
 ${B}Ishlatish:${N} YouTube'da Ulashish → ${B}Nusxa olish${N}, keyin ${B}$BTN${N} ni bosing.
 ${B}$BTN2${N} — Download/YouTube dagi MKV videolarni sifatini yoʻqotmasdan MP4 ga oʻtkazadi.
 ${B}$BTN3${N} — nusxalangan havoladan faqat musiqani MP3 qilib yuklaydi (Download/YouTube/Musiqa).
+${B}$BTN4${N} — nusxalangan Pinterest havolasidan videoni eng yuqori sifatda yuklaydi (Download/YouTube/Pinterest).
 EOF
 }
 
@@ -203,6 +207,7 @@ clean_url() {
   printf '%s' "$1" | grep -oE 'https?://[^[:space:]"<>]+' | head -n1
 }
 
+is_pinterest() { [[ "$1" =~ ^https?://([a-z0-9-]+\.)?(pinterest\.[a-z.]+|pin\.it)/ ]]; }
 is_youtube() { [[ "$1" =~ ^https?://([a-z0-9-]+\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)/ ]]; }
 
 choose_mode() {
@@ -278,6 +283,12 @@ mode_args() {
       FMT=(-f "ba[ext=m4a]/ba/b" -x --audio-format m4a
            --embed-thumbnail --convert-thumbnails jpg)
       INFO="%(acodec.:4|?)s · %(abr|?)d kbit/s · ~%(filesize,filesize_approx|?)DB" ;;
+    7|pin)
+      MODE_NAME="Pinterest (eng yuqori sifat)"
+      OUT_SUB="/Pinterest"
+      # Pin bir necha oʻlchamda keladi (MP4 va HLS) — eng kattasi; natija MP4.
+      FMT=(-f "bv*+ba/b" -S "res,fps" --merge-output-format mp4 --remux-video mp4)
+      INFO="%(resolution|?)s · %(vcodec.:4|?)s · ~%(filesize,filesize_approx|?)DB" ;;
     *) return 1 ;;
   esac
 }
@@ -285,7 +296,9 @@ mode_args() {
 # Xato matnidan oʻzbekcha tushuntirish. 0 — qayta urinish foydasiz, 1 — yangilab koʻrish mumkin.
 explain() {
   local log="$1"
-  if grep -qiE "Private video" "$log"; then
+  if grep -qiE "No video formats found|no video in this pin|There is no video" "$log"; then
+    err "Bu pinda video yoʻq (faqat rasm). Rasmni Pinterest ilovasidan saqlang."; return 0
+  elif grep -qiE "Private video" "$log"; then
     err "Bu video yopiq (private)."; return 0
   elif grep -qiE "members-only|Join this channel" "$log"; then
     err "Bu video faqat kanal aʼzolari uchun."; return 0
@@ -308,7 +321,7 @@ explain() {
 
 download() {
   local url="$1" mode="$2" dir pl log rc
-  mode_args "$mode" || { err "Notoʻgʻri tanlov: $mode (1–6)"; return 2; }
+  mode_args "$mode" || { err "Notoʻgʻri tanlov: $mode (1–7)"; return 2; }
   dir=$(need_storage) || return 1
   dir="$dir$OUT_SUB"
   mkdir -p "$dir/.yuklanmoqda" && : >"$dir/.yuklanmoqda/.nomedia"
@@ -401,7 +414,8 @@ main() {
   [ -z "$raw" ] && raw=$(ask "YouTube havolasini qoʻying: ")
   url=$(clean_url "$raw")
   [ -n "$url" ] || { err "Havola topilmadi: ${raw:-(boʻsh)}"; return 2; }
-  is_youtube "$url" || warn "Bu YouTube havolasi emas — baribir urinib koʻramiz (yt-dlp koʻp saytlarni biladi)."
+  if [ -z "$mode" ] && is_pinterest "$url"; then mode=7; fi
+  is_youtube "$url" || is_pinterest "$url" || warn "Bu YouTube havolasi emas — baribir urinib koʻramiz (yt-dlp koʻp saytlarni biladi)."
   update_if_old
   [ -z "$mode" ] && mode=$(choose_mode)
   download "$url" "$mode"

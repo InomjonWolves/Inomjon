@@ -35,6 +35,7 @@ curl -fsSL https://raw.githubusercontent.com/InomjonWolves/Inomjon/ccr-dc03c86a-
 | **4** | 720p MP4 | Joy va internetni tejash |
 | **5** | Faqat musiqa — **MP3** (eng yuqori sifat, ~245 kbit/s), muqova rasmi va nomi bilan | Musiqa, podkast |
 | **6** | Faqat musiqa — M4A (YouTube'ning asl ovozi, oʻzgarishsiz) | Eng toza ovoz kerak boʻlsa |
+| **7** | Pinterest videosi, eng katta oʻlchamda, MP4 | Pinterest havolasi boʻlsa oʻzi tanlanadi (menyu chiqmaydi) |
 
 Yoki Termux'da yozing:
 
@@ -42,6 +43,7 @@ Yoki Termux'da yozing:
 yt https://youtu.be/…        # sifatni soʻraydi
 yt https://youtu.be/… 1      # darhol eng yuqori sifat (MP4)
 yt https://youtu.be/… 5      # darhol musiqa (MP3)
+yt https://pin.it/…          # Pinterest videosi (menyusiz)
 mp4                          # Download/YouTube dagi MKV larni MP4 ga
 yt yangilash                 # yt-dlp va skriptlarni yangilash
 yt yordam
@@ -49,7 +51,7 @@ yt yordam
 
 Pleylist havolasida «faqat shu video» yoki «butun pleylist» soʻraladi. Pleylist alohida papkaga yoziladi; qayta ishga tushirsangiz, yuklangan videolar oʻtkazib yuboriladi.
 
-**Fayllar:** `Download/YouTube` (musiqa — `Download/YouTube/Musiqa`). Galereyada «YouTube» albomi boʻlib koʻrinadi.
+**Fayllar:** `Download/YouTube` (musiqa — `Download/YouTube/Musiqa`, Pinterest — `Download/YouTube/Pinterest`). Galereyada «YouTube» albomi boʻlib koʻrinadi.
 
 ## 4. MKV → MP4 (sifat oʻzgarmaydi)
 
@@ -64,13 +66,13 @@ Oldin MKV boʻlib yuklangan videolarni MP4 ga oʻtkazish uchun Termux'da `mp4` d
 
 ## 5. Bosh ekran tugmalari (ixtiyoriy)
 
-Qizil **YouTube-yuklash** — nusxalangan havolani yuklaydi (sifatni soʻraydi). Binafsha **YouTube-MP3** — soʻramasdan musiqani MP3 qilib yuklaydi. Yashil **MKV-dan-MP4** — papkadagi MKV larni MP4 ga oʻtkazadi.
+Qizil **YouTube-yuklash** — nusxalangan havolani yuklaydi (sifatni soʻraydi). Binafsha **YouTube-MP3** — soʻramasdan musiqani MP3 qilib yuklaydi. Yashil **MKV-dan-MP4** — papkadagi MKV larni MP4 ga oʻtkazadi. Pushti **Pinterest-yuklash** — nusxalangan pin havolasidan videoni eng yuqori sifatda yuklaydi.
 
 1. F-Droid'dan yana ikkita kichik ilova oʻrnating (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan — aks holda ishlamaydi):
    - **Termux:Widget** — https://f-droid.org/packages/com.termux.widget/
    - **Termux:API** — https://f-droid.org/packages/com.termux.api/ (nusxalangan havolani oʻqish uchun)
 2. Termux'da bir marta yozing: `yt tugma` (yangi oʻrnatishda bu oʻzi bajariladi).
-3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang. Qolgan tugmalar uchun yana bir martadan — **YouTube-MP3**, **MKV-dan-MP4**.
+3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang. Qolgan tugmalar uchun yana bir martadan — **YouTube-MP3**, **MKV-dan-MP4**, **Pinterest-yuklash**.
 4. Telefon sozlamalari → Ilovalar → Termux → **Boshqa ilovalar ustidan koʻrsatish** → yoqing. Busiz tugma bosilganda Termux oʻzi ochilmaydi (Android 10+).
 
 Ishlatish: YouTube'da **Ulashish → Nusxa olish**, keyin tugmani bosing. Buferda havola boʻlmasa, Termux havolani soʻraydi.
@@ -83,6 +85,7 @@ Ishlatish: YouTube'da **Ulashish → Nusxa olish**, keyin tugmani bosing. Buferd
 - **YouTube oʻzgarsa**, yt-dlp har 5 kunda oʻzi yangilanadi; xato boʻlsa — yangilab, yana bir marta urinadi. Qoʻlda: `yt yangilash`.
 - **«Robot emasligingizni tasdiqlang»** xatosi — Wi-Fi'dan mobil internetga (yoki aksincha) oʻting, birozdan keyin qayta urining. VPN boʻlsa, oʻchirib koʻring.
 - **MP3 haqida.** YouTube ovozni allaqachon siqilgan holda saqlaydi (~128–160 kbit/s), MP3 ga oʻtkazish uni yaxshilamaydi — faqat har qanday pleyerda ochiladigan qiladi. Eng toza ovoz kerak boʻlsa — **6** (M4A).
+- **Pinterest.** Pinterest ilovasida pinni oching → **Ulashish** → **Havolani nusxalash** → pushti tugmani bosing. Pinterest videoni bir necha oʻlchamda saqlaydi, eng kattasi yuklanadi — odatda asl yuklangan sifat, lekin undan yuqori boʻlmaydi. Pin faqat rasm boʻlsa, «Bu pinda video yoʻq» deb aytadi. Shaxsiy (yopiq) doskadagi pinlar yuklanmaydi.
 - Yopiq (private), faqat aʼzolar uchun va yosh cheklovi bor videolar hisobsiz yuklanmaydi.
 - Instagram, TikTok, Facebook va boshqa saytlar havolalari ham koʻpincha ishlaydi — yt-dlp minglab saytlarni biladi.
 
@@ -94,8 +97,8 @@ Faqat oʻzingiz koʻrish uchun yuklang. Mualliflik huquqi bilan himoyalangan vid
 
 ```sh
 rm -f $PREFIX/bin/yt $PREFIX/bin/mp4 ~/bin/termux-url-opener
-rm -f ~/.shortcuts/YouTube-yuklash ~/.shortcuts/MKV-dan-MP4 ~/.shortcuts/YouTube-MP3
-rm -f ~/.shortcuts/icons/YouTube-yuklash.png ~/.shortcuts/icons/MKV-dan-MP4.png ~/.shortcuts/icons/YouTube-MP3.png
+rm -f ~/.shortcuts/YouTube-yuklash ~/.shortcuts/MKV-dan-MP4 ~/.shortcuts/YouTube-MP3 ~/.shortcuts/Pinterest-yuklash
+rm -f ~/.shortcuts/icons/YouTube-yuklash.png ~/.shortcuts/icons/MKV-dan-MP4.png ~/.shortcuts/icons/YouTube-MP3.png ~/.shortcuts/icons/Pinterest-yuklash.png
 pip uninstall -y yt-dlp yt-dlp-ejs
 ```
 
@@ -108,5 +111,6 @@ pip uninstall -y yt-dlp yt-dlp-ejs
 | `termux-url-opener` | «Ulashish → Termux» bosilganda havolani `yt` ga beradi (`~/bin/` ga oʻrnatiladi) |
 | `mp4` | MKV/WEBM → MP4: video qayta kodlanmaydi, natija tekshiriladi |
 | `tugma`, `tugma.png` | Bosh ekran tugmasi va uning belgisi (`yt tugma` → `~/.shortcuts/YouTube-yuklash`) |
+| `tugma-pin`, `tugma-pin.png` | Toʻrtinchi tugma: Pinterest videosi (`~/.shortcuts/Pinterest-yuklash`) |
 | `tugma-mp3`, `tugma-mp3.png` | Uchinchi tugma: menyusiz MP3 yuklash (`~/.shortcuts/YouTube-MP3`) |
 | `tugma-mp4`, `tugma-mp4.png` | Ikkinchi tugma: papkadagi MKV larni MP4 ga (`~/.shortcuts/MKV-dan-MP4`) |

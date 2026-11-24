@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# sub — videoning turkcha subtitrini yuklash va oʻrganish uchun tayyorlash (Termux).
+#
+#   sub <havola>          turkcha subtitr (til: tr)
+#   sub <havola> en       boshqa til (en, ru, uz …)
+#
+# Natija: Download/YouTube/Subtitr/<video nomi>/
+#   • <nom>.srt        vaqtli subtitr (video pleyerlarda ulash uchun)
+#   • <nom>.txt        toza matn — oʻqish uchun
+#   • <nom>.soʻzlar.txt  soʻzlar takrorlanish soni bilan (koʻpdan kamga) — oʻrganish uchun
+# Qoʻlda yozilgan subtitr boʻlsa — shu olinadi; boʻlmasa YouTube'ning avtomatik subtitri.
+
+PY="${YT_PYTHON:-python}"
+if [ -t 1 ]; then
+  B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' C=$'\e[36m' D=$'\e[2m' N=$'\e[0m'
+else
+  B="" G="" Y="" R="" C="" D="" N=""
+fi
+say()  { printf '%s\n' "${C}›${N} $*"; }
+ok()   { printf '%s\n' "${G}✔${N} $*"; }
+warn() { printf '%s\n' "${Y}!${N} $*"; }
+err()  { printf '%s\n' "${R}✖ $*${N}" >&2; }
+
+pick_dir() {
+  local d
+  [ -n "${YT_DIR:-}" ] && { mkdir -p "$YT_DIR" && echo "$YT_DIR"; return 0; }
+  for d in /storage/emulated/0/Download "$HOME/storage/downloads"; do
+    [ -d "$d" ] && [ -w "$d" ] && { echo "$d/YouTube"; return 0; }
+  done
+  return 1
+}
+
+# SRT/VTT dan toza matn va soʻzlar roʻyxati. Avtomatik subtitrdagi takrorlarni olib tashlaydi.
+PYCODE='
+import re, sys, html, collections
+src, txt_out, words_out, lang = sys.argv[1:5]
+raw = open(src, encoding="utf-8", errors="replace").read().replace("\r", "")
+lines = []
+for ln in raw.split("\n"):
+    ln = ln.strip()
+    if not ln or ln.isdigit() or "-->" in ln or ln.startswith(("WEBVTT", "Kind:", "Language:", "NOTE")):
+        continue
+    ln = html.unescape(re.sub(r"<[^>]+>|\{[^}]*\}", "", ln)).strip()
+    ln = re.sub(r"\s+", " ", ln)
+    if ln and (not lines or ln != lines[-1]):
+        lines.append(ln)
+# Avtomatik subtitrda har satr oldingisining davomi — oldingi satr yangisining boshi boʻlsa, almashtiramiz.
+clean = []
+for ln in lines:
+    if clean and ln.startswith(clean[-1]):
+        clean[-1] = ln
+    elif clean and clean[-1].endswith(ln):
+        continue
+    else:
+        clean.append(ln)
+open(txt_out, "w", encoding="utf-8").write("\n".join(clean) + "\n")
+
+def lower(w):
+    if lang.startswith("tr"):
+        w = w.replace("İ", "i").replace("I", "ı")
+    return w.lower()
+cnt = collections.Counter()
+for ln in clean:
+    for w in re.findall(r"[^\W\d_]+(?:[\u2019\x27][^\W\d_]+)?", ln, re.U):
+        w = lower(w)
+        if len(w) > 1 or w in ("o", "a", "e"):
+            cnt[w] += 1
+with open(words_out, "w", encoding="utf-8") as f:
+    for w, n in sorted(cnt.items(), key=lambda x: (-x[1], x[0])):
+        f.write(f"{n}\t{w}\n")
+print(len(clean), len(cnt))
+'
+
+main() {
+  case "${1:-}" in -h|--help|yordam|"") sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; return 0 ;; esac
+  local url lang="${2:-tr}" base tmp rc f
+  url=$(printf '%s' "$1" | grep -oE 'https?://[^[:space:]"<>]+' | head -n1)
+  [ -n "$url" ] || { err "Havola topilmadi."; return 2; }
+  "$PY" -c "import yt_dlp" 2>/dev/null || { err "yt-dlp oʻrnatilmagan. Avval: yt yangilash"; return 1; }
+  base=$(pick_dir) || { err "Xotiraga ruxsat yoʻq. Termux'da: termux-setup-storage"; return 1; }
+  base="$base/Subtitr"
+  tmp=$(mktemp -d)
+
+  say "Subtitr qidirilmoqda (til: ${B}$lang${N})…"
+  "$PY" -m yt_dlp --skip-download --no-playlist --js-runtimes node --remote-components ejs:github \
+    --write-subs --write-auto-subs --sub-langs "$lang,$lang-orig" --sub-format "srt/vtt/best" \
+    --convert-subs srt --windows-filenames --quiet --no-warnings \
+    -o "$tmp/%(title).120B [%(id)s].%(ext)s" -- "$url"
+  rc=$?
+  f=$(find "$tmp" -maxdepth 1 -name '*.srt' | head -n1)
+  if [ -z "$f" ]; then
+    rm -rf "$tmp"
+    if [ $rc -ne 0 ]; then err "Yuklab boʻlmadi. Internetni tekshiring yoki: yt yangilash"
+    else err "Bu videoda «$lang» tilida subtitr yoʻq."; fi
+    return 1
+  fi
+
+  local name dir
+  name=$(basename "$f"); name="${name%.srt}"; name="${name%."$lang"}"; name="${name%."$lang"-orig}"
+  dir="$base/$name"
+  mkdir -p "$dir" || { err "Papka yaratib boʻlmadi."; rm -rf "$tmp"; return 1; }
+  cp "$f" "$dir/$name.srt"
+  local stat
+  stat=$("$PY" -I -c "$PYCODE" "$f" "$dir/$name.txt" "$dir/$name.soʻzlar.txt" "$lang") \
+    || { err "Matnni tayyorlab boʻlmadi."; rm -rf "$tmp"; return 1; }
+  rm -rf "$tmp"
+  command -v termux-media-scan >/dev/null && timeout 20 termux-media-scan -r "$dir" >/dev/null 2>&1
+  ok "Tayyor: ${stat% *} qator, ${stat#* } xil soʻz."
+  say "${dir#/storage/emulated/0/}"
+  echo "  ${D}$name.srt · .txt · .soʻzlar.txt${N}"
+}
+
+main "$@"

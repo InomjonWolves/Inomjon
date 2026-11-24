@@ -64,15 +64,30 @@ Oldin MKV boʻlib yuklangan videolarni MP4 ga oʻtkazish uchun Termux'da `mp4` d
 - Shu nomda boshqa sifatdagi MP4 bor boʻlsa (masalan, 1080p), ustiga yozilmaydi — yangisi `… (2160p).mp4` boʻladi.
 - Faqat VP8 kodekli eski videolarni sifat yoʻqotmasdan oʻtkazib boʻlmaydi — ular oʻtkazib yuboriladi.
 
-## 5. Bosh ekran tugmalari (ixtiyoriy)
+## 5. Turkcha subtitr (oʻrganish uchun)
 
-Qizil **YouTube-yuklash** — nusxalangan havolani yuklaydi (sifatni soʻraydi). Binafsha **YouTube-MP3** — soʻramasdan musiqani MP3 qilib yuklaydi. Yashil **MKV-dan-MP4** — papkadagi MKV larni MP4 ga oʻtkazadi. Pushti **Pinterest-yuklash** — nusxalangan pin havolasidan videoni eng yuqori sifatda yuklaydi.
+```sh
+yt subtitr https://youtu.be/…        # turkcha subtitr
+sub https://youtu.be/… en            # boshqa til (en, ru, uz …)
+```
+
+Yoki YouTube'da havolani nusxalab, bosh ekrandagi koʻk **Turkcha-subtitr** tugmasini bosing. `Download/YouTube/Subtitr/<video nomi>/` papkasida uchta fayl paydo boʻladi:
+
+- `….srt` — vaqtli subtitr (video pleyerlarda ulash mumkin);
+- `….txt` — toza matn: vaqt belgilari va avtomatik subtitrdagi takrorlar olib tashlangan, oʻqish uchun qulay;
+- `….soʻzlar.txt` — videodagi soʻzlar takrorlanish soni bilan, koʻpdan kamga (turkcha harflar toʻgʻri: `Işık` = `ışık`). Notanish soʻzlarni oʻrganish uchun.
+
+Qoʻlda yozilgan subtitr boʻlsa — shu olinadi, boʻlmasa YouTube'ning avtomatik subtitri (u gohida xato qiladi). Videoda subtitr boʻlmasa, shuni aytadi.
+
+## 6. Bosh ekran tugmalari (ixtiyoriy)
+
+Qizil **YouTube-yuklash** — nusxalangan havolani yuklaydi (sifatni soʻraydi). Binafsha **YouTube-MP3** — soʻramasdan musiqani MP3 qilib yuklaydi. Yashil **MKV-dan-MP4** — papkadagi MKV larni MP4 ga oʻtkazadi. Koʻk **Turkcha-subtitr** — subtitr va soʻzlar roʻyxatini tayyorlaydi. Pushti **Pinterest-yuklash** — nusxalangan pin havolasidan videoni eng yuqori sifatda yuklaydi.
 
 1. F-Droid'dan yana ikkita kichik ilova oʻrnating (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan — aks holda ishlamaydi):
    - **Termux:Widget** — https://f-droid.org/packages/com.termux.widget/
    - **Termux:API** — https://f-droid.org/packages/com.termux.api/ (nusxalangan havolani oʻqish uchun)
 2. Termux'da bir marta yozing: `yt tugma` (yangi oʻrnatishda bu oʻzi bajariladi).
-3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang. Qolgan tugmalar uchun yana bir martadan — **YouTube-MP3**, **MKV-dan-MP4**, **Pinterest-yuklash**.
+3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang. Qolgan tugmalar uchun yana bir martadan — **YouTube-MP3**, **MKV-dan-MP4**, **Pinterest-yuklash**, **Turkcha-subtitr**.
 4. Telefon sozlamalari → Ilovalar → Termux → **Boshqa ilovalar ustidan koʻrsatish** → yoqing. Busiz tugma bosilganda Termux oʻzi ochilmaydi (Android 10+).
 
 Ishlatish: YouTube'da **Ulashish → Nusxa olish**, keyin tugmani bosing. Buferda havola boʻlmasa, Termux havolani soʻraydi.
@@ -96,9 +111,9 @@ Faqat oʻzingiz koʻrish uchun yuklang. Mualliflik huquqi bilan himoyalangan vid
 ## Oʻchirish
 
 ```sh
-rm -f $PREFIX/bin/yt $PREFIX/bin/mp4 ~/bin/termux-url-opener
-rm -f ~/.shortcuts/YouTube-yuklash ~/.shortcuts/MKV-dan-MP4 ~/.shortcuts/YouTube-MP3 ~/.shortcuts/Pinterest-yuklash
-rm -f ~/.shortcuts/icons/YouTube-yuklash.png ~/.shortcuts/icons/MKV-dan-MP4.png ~/.shortcuts/icons/YouTube-MP3.png ~/.shortcuts/icons/Pinterest-yuklash.png
+rm -f $PREFIX/bin/yt $PREFIX/bin/mp4 $PREFIX/bin/sub ~/bin/termux-url-opener
+rm -f ~/.shortcuts/YouTube-yuklash ~/.shortcuts/MKV-dan-MP4 ~/.shortcuts/YouTube-MP3 ~/.shortcuts/Pinterest-yuklash ~/.shortcuts/Turkcha-subtitr
+rm -f ~/.shortcuts/icons/YouTube-yuklash.png ~/.shortcuts/icons/MKV-dan-MP4.png ~/.shortcuts/icons/YouTube-MP3.png ~/.shortcuts/icons/Pinterest-yuklash.png ~/.shortcuts/icons/Turkcha-subtitr.png
 pip uninstall -y yt-dlp yt-dlp-ejs
 ```
 
@@ -111,6 +126,8 @@ pip uninstall -y yt-dlp yt-dlp-ejs
 | `termux-url-opener` | «Ulashish → Termux» bosilganda havolani `yt` ga beradi (`~/bin/` ga oʻrnatiladi) |
 | `mp4` | MKV/WEBM → MP4: video qayta kodlanmaydi, natija tekshiriladi |
 | `tugma`, `tugma.png` | Bosh ekran tugmasi va uning belgisi (`yt tugma` → `~/.shortcuts/YouTube-yuklash`) |
+| `sub` | Subtitr: `.srt`, toza matn va soʻzlar roʻyxati (`yt subtitr`) |
+| `tugma-sub`, `tugma-sub.png` | Beshinchi tugma: turkcha subtitr (`~/.shortcuts/Turkcha-subtitr`) |
 | `tugma-pin`, `tugma-pin.png` | Toʻrtinchi tugma: Pinterest videosi (`~/.shortcuts/Pinterest-yuklash`) |
 | `tugma-mp3`, `tugma-mp3.png` | Uchinchi tugma: menyusiz MP3 yuklash (`~/.shortcuts/YouTube-MP3`) |
 | `tugma-mp4`, `tugma-mp4.png` | Ikkinchi tugma: papkadagi MKV larni MP4 ga (`~/.shortcuts/MKV-dan-MP4`) |

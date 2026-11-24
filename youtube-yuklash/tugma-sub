@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Bosh ekran tugmasi (Termux:Widget): nusxalangan (Copy) YouTube havolasidan turkcha subtitrni
+# yuklaydi (.srt, toza matn, soʻzlar roʻyxati). Oʻrnatiladi: ~/.shortcuts/Turkcha-subtitr
+YT="${PREFIX:-/data/data/com.termux/files/usr}/bin/sub"
+command -v sub >/dev/null && YT=$(command -v sub)
+
+has_url() { printf '%s' "$1" | grep -qE 'https?://'; }
+
+clip="" noapi=""
+if command -v termux-clipboard-get >/dev/null; then
+  # Android buferni faqat Termux ekranda turganda beradi — oyna ochilguncha biroz kutamiz.
+  for _ in 1 2 3; do
+    clip=$(timeout 5 termux-clipboard-get 2>/dev/null)
+    [ $? -eq 124 ] && { noapi=1; break; }   # Termux:API ilovasi javob bermadi
+    has_url "$clip" && break
+    sleep 0.7
+  done
+else
+  noapi=1
+fi
+
+if has_url "$clip"; then
+  "$YT" "$clip" tr
+else
+  if [ -n "$noapi" ]; then
+    echo "Buferni oʻqish uchun Termux:API ilovasi kerak (F-Droid). Hozircha havolani qoʻying:"
+  else
+    echo "Buferda havola yoʻq. YouTube'da: Ulashish → Nusxa olish (Copy link)."
+  fi
+  echo "(Qoʻyish: ekranni bosib turing → Paste)"
+  read -r -p "Havola: " link </dev/tty 2>/dev/null && [ -n "$link" ] && "$YT" "$link" tr
+fi
+echo
+( : </dev/tty ) 2>/dev/null && read -r -p "Oynani yopish uchun Enter bosing… " _ </dev/tty

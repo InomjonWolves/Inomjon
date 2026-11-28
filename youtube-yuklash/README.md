@@ -79,15 +79,36 @@ Yoki YouTube'da havolani nusxalab, bosh ekrandagi koʻk **Turkcha-subtitr** tugm
 
 Qoʻlda yozilgan subtitr boʻlsa — shu olinadi, boʻlmasa YouTube'ning avtomatik subtitri (u gohida xato qiladi). Videoda subtitr boʻlmasa, shuni aytadi.
 
-## 6. Bosh ekran tugmalari (ixtiyoriy)
+## 6. Kitob rasmlari → PDF
 
-Qizil **YouTube-yuklash** — nusxalangan havolani yuklaydi (sifatni soʻraydi). Binafsha **YouTube-MP3** — soʻramasdan musiqani MP3 qilib yuklaydi. Yashil **MKV-dan-MP4** — papkadagi MKV larni MP4 ga oʻtkazadi. Koʻk **Turkcha-subtitr** — subtitr va soʻzlar roʻyxatini tayyorlaydi. Pushti **Pinterest-yuklash** — nusxalangan pin havolasidan videoni eng yuqori sifatda yuklaydi.
+Kitob sahifalarini suratga olgan boʻlsangiz, hammasini ketma-ketlikda bitta PDF ga jamlash mumkin:
+
+1. Rasmlarni telefonda **Download/Kitob** papkasiga joylang (papka yoʻq boʻlsa, `pdf` buyrugʻi oʻzi yaratadi).
+2. Termux'da `pdf` yozing — yoki bosh ekrandagi toʻq sariq **Rasmlar-PDF** tugmasini bosing.
+3. `Download/Kitob/Kitob.pdf` tayyor.
+
+```sh
+pdf                      # Download/Kitob → Kitob.pdf
+pdf Kitob2               # Download/Kitob2 → Kitob2/Kitob2.pdf
+pdf Kitob2 Tarix         # PDF nomi: Tarix.pdf
+pdf -k Kitob2            # kichikroq fayl (Telegram'ga yuborish uchun)
+```
+
+- **Tartib** fayl nomi boʻyicha va raqamlar toʻgʻri: `1, 2, … 9, 10, 11` (`1, 10, 11, 2` emas). Rasmlar `IMG_001`, `IMG_002`… yoki `1`, `2`… deb nomlangan boʻlsa, tartib saqlanadi. Telefon kamerasi vaqt boʻyicha nomlasa ham (`20261128_101530.jpg`) tartib suratga olingan vaqtga mos keladi.
+- **Sifat oʻzgarmaydi.** JPEG rasmlar qayta siqilmaydi, toʻgʻridan-toʻgʻri PDF ichiga joylanadi. `-k` — hajmni 2–3 barobar kamaytiradi (rasm eni 1800 px gacha).
+- Telefonda yonboshlab olingan rasmlar **oʻzi toʻgʻrilanadi**. Oʻchirish: `-r`.
+- PNG va WEBP ham ishlaydi. Oʻqib boʻlmaydigan fayl oʻtkazib yuboriladi va aytiladi. Asl rasmlarga tegilmaydi.
+- Matnni qidirib boʻladigan PDF (OCR) emas — sahifalar rasm koʻrinishida.
+
+## 7. Bosh ekran tugmalari (ixtiyoriy)
+
+Qizil **YouTube-yuklash** — nusxalangan havolani yuklaydi (sifatni soʻraydi). Binafsha **YouTube-MP3** — soʻramasdan musiqani MP3 qilib yuklaydi. Yashil **MKV-dan-MP4** — papkadagi MKV larni MP4 ga oʻtkazadi. Koʻk **Turkcha-subtitr** — subtitr va soʻzlar roʻyxatini tayyorlaydi. Toʻq sariq **Rasmlar-PDF** — Download/Kitob dagi rasmlarni PDF ga jamlaydi. Pushti **Pinterest-yuklash** — nusxalangan pin havolasidan videoni eng yuqori sifatda yuklaydi.
 
 1. F-Droid'dan yana ikkita kichik ilova oʻrnating (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan — aks holda ishlamaydi):
    - **Termux:Widget** — https://f-droid.org/packages/com.termux.widget/
    - **Termux:API** — https://f-droid.org/packages/com.termux.api/ (nusxalangan havolani oʻqish uchun)
 2. Termux'da bir marta yozing: `yt tugma` (yangi oʻrnatishda bu oʻzi bajariladi).
-3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang. Qolgan tugmalar uchun yana bir martadan — **YouTube-MP3**, **MKV-dan-MP4**, **Pinterest-yuklash**, **Turkcha-subtitr**.
+3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang. Qolgan tugmalar uchun yana bir martadan — **YouTube-MP3**, **MKV-dan-MP4**, **Pinterest-yuklash**, **Turkcha-subtitr**, **Rasmlar-PDF**.
 4. Telefon sozlamalari → Ilovalar → Termux → **Boshqa ilovalar ustidan koʻrsatish** → yoqing. Busiz tugma bosilganda Termux oʻzi ochilmaydi (Android 10+).
 
 Ishlatish: YouTube'da **Ulashish → Nusxa olish**, keyin tugmani bosing. Buferda havola boʻlmasa, Termux havolani soʻraydi.
@@ -111,9 +132,9 @@ Faqat oʻzingiz koʻrish uchun yuklang. Mualliflik huquqi bilan himoyalangan vid
 ## Oʻchirish
 
 ```sh
-rm -f $PREFIX/bin/yt $PREFIX/bin/mp4 $PREFIX/bin/sub ~/bin/termux-url-opener
-rm -f ~/.shortcuts/YouTube-yuklash ~/.shortcuts/MKV-dan-MP4 ~/.shortcuts/YouTube-MP3 ~/.shortcuts/Pinterest-yuklash ~/.shortcuts/Turkcha-subtitr
-rm -f ~/.shortcuts/icons/YouTube-yuklash.png ~/.shortcuts/icons/MKV-dan-MP4.png ~/.shortcuts/icons/YouTube-MP3.png ~/.shortcuts/icons/Pinterest-yuklash.png ~/.shortcuts/icons/Turkcha-subtitr.png
+rm -f $PREFIX/bin/yt $PREFIX/bin/mp4 $PREFIX/bin/sub $PREFIX/bin/pdf ~/bin/termux-url-opener
+rm -f ~/.shortcuts/YouTube-yuklash ~/.shortcuts/MKV-dan-MP4 ~/.shortcuts/YouTube-MP3 ~/.shortcuts/Pinterest-yuklash ~/.shortcuts/Turkcha-subtitr ~/.shortcuts/Rasmlar-PDF
+rm -f ~/.shortcuts/icons/YouTube-yuklash.png ~/.shortcuts/icons/MKV-dan-MP4.png ~/.shortcuts/icons/YouTube-MP3.png ~/.shortcuts/icons/Pinterest-yuklash.png ~/.shortcuts/icons/Turkcha-subtitr.png ~/.shortcuts/icons/Rasmlar-PDF.png
 pip uninstall -y yt-dlp yt-dlp-ejs
 ```
 
@@ -126,6 +147,8 @@ pip uninstall -y yt-dlp yt-dlp-ejs
 | `termux-url-opener` | «Ulashish → Termux» bosilganda havolani `yt` ga beradi (`~/bin/` ga oʻrnatiladi) |
 | `mp4` | MKV/WEBM → MP4: video qayta kodlanmaydi, natija tekshiriladi |
 | `tugma`, `tugma.png` | Bosh ekran tugmasi va uning belgisi (`yt tugma` → `~/.shortcuts/YouTube-yuklash`) |
+| `pdf` | Kitob rasmlari → bitta PDF (tartib, burilish, `-k` — kichik fayl) |
+| `tugma-pdf`, `tugma-pdf.png` | Oltinchi tugma: Download/Kitob → PDF (`~/.shortcuts/Rasmlar-PDF`) |
 | `sub` | Subtitr: `.srt`, toza matn va soʻzlar roʻyxati (`yt subtitr`) |
 | `tugma-sub`, `tugma-sub.png` | Beshinchi tugma: turkcha subtitr (`~/.shortcuts/Turkcha-subtitr`) |
 | `tugma-pin`, `tugma-pin.png` | Toʻrtinchi tugma: Pinterest videosi (`~/.shortcuts/Pinterest-yuklash`) |

@@ -12,7 +12,7 @@
 # YouTube ilovasida «Ulashish → Termux» ham shu skriptni ochadi (~/bin/termux-url-opener).
 # Ichida yt-dlp (ochiq kodli yuklovchi) va ffmpeg (video + audioni birlashtiradi) ishlaydi.
 
-YT_VERSION="1.5"
+YT_VERSION="1.6"
 YT_BASE="${YT_BASE:-https://raw.githubusercontent.com/InomjonWolves/Inomjon/ccr-dc03c86a-hhey2p/youtube-yuklash}"
 PY="${YT_PYTHON:-python}"
 STATE="$HOME/.local/state/yt"
@@ -22,6 +22,7 @@ BTN2="MKV-dan-MP4"      # ikkinchi tugma: papkadagi MKV larni MP4 ga
 BTN3="YouTube-MP3"      # uchinchi tugma: nusxalangan havoladan musiqa (MP3)
 BTN4="Pinterest-yuklash" # toʻrtinchi tugma: Pinterest videosi
 BTN5="Turkcha-subtitr"   # beshinchi tugma: videoning turkcha subtitri
+BTN6="Rasmlar-PDF"       # oltinchi tugma: Download/Kitob dagi rasmlar → PDF
 
 if [ -t 1 ]; then
   B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' C=$'\e[36m' D=$'\e[2m' N=$'\e[0m'
@@ -53,6 +54,7 @@ ${B}yt${N} — YouTube'dan telefonga eng yuqori sifatda yuklash  ${D}(v$YT_VERSI
   yt <havola> 5       musiqa — MP3 (eng yuqori sifat)
   yt <havola> 6       musiqa — M4A (YouTube'ning asl ovozi, oʻzgarishsiz)
   yt subtitr <havola> turkcha subtitr: .srt, toza matn va soʻzlar roʻyxati (sub <havola> ham)
+  pdf [papka]         papkadagi kitob rasmlarini bitta PDF ga jamlash (pdf -k — kichikroq fayl)
   yt <pinterest>      Pinterest videosi — eng yuqori sifatda, menyusiz (Download/YouTube/Pinterest)
   yt yangilash        yt-dlp va skriptlarni yangilash
   yt tugma            bosh ekran tugmalarini oʻrnatish
@@ -96,18 +98,19 @@ update_if_old() {
 update_self() {
   local tmp f dst
   tmp=$(mktemp -d)
-  for f in yt termux-url-opener mp4 sub; do
+  for f in yt termux-url-opener mp4 sub pdf; do
     curl -fsSL "$YT_BASE/$f" -o "$tmp/$f" && bash -n "$tmp/$f" || { err "$f ni yuklab boʻlmadi."; rm -rf "$tmp"; return 1; }
   done
   dst=$(command -v yt || echo "${PREFIX:-/usr}/bin/yt")
   mkdir -p "$HOME/bin"
-  for f in yt termux-url-opener mp4 sub; do
+  for f in yt termux-url-opener mp4 sub pdf; do
     chmod +x "$tmp/$f"
     command -v termux-fix-shebang >/dev/null && termux-fix-shebang "$tmp/$f"
   done
   # mv — yangi fayl: hozir ishlab turgan skript buzilmaydi.
   mv -f "$tmp/yt" "$dst" && mv -f "$tmp/termux-url-opener" "$HOME/bin/termux-url-opener" \
-    && mv -f "$tmp/mp4" "$(dirname "$dst")/mp4" && mv -f "$tmp/sub" "$(dirname "$dst")/sub"
+    && mv -f "$tmp/mp4" "$(dirname "$dst")/mp4" && mv -f "$tmp/sub" "$(dirname "$dst")/sub" \
+    && mv -f "$tmp/pdf" "$(dirname "$dst")/pdf"
   rm -rf "$tmp"
   ok "Skript yangilandi: $("$dst" --version 2>/dev/null)"
   [ -e "$HOME/.shortcuts/$BTN" ] && "$dst" tugma >/dev/null
@@ -127,7 +130,7 @@ ensure_cmd() {
   fi
   rm -f "$tmp"; warn "$name buyrugʻini yuklab boʻlmadi: yt yangilash"; return 1
 }
-ensure_mp4() { ensure_cmd mp4; ensure_cmd sub; }
+ensure_mp4() { ensure_cmd mp4; ensure_cmd sub; ensure_cmd pdf; }
 
 # Bitta tugma: skript va belgisini ~/.shortcuts/ ga qoʻyadi.
 put_button() {
@@ -153,6 +156,7 @@ install_button() {
   put_button tugma-mp3 "$BTN3"
   put_button tugma-pin "$BTN4"
   put_button tugma-sub "$BTN5"
+  put_button tugma-pdf "$BTN6"
   # Nusxalangan havolani oʻqish uchun (Termux:API ilovasi bilan ishlaydi).
   if ! command -v termux-clipboard-get >/dev/null && command -v pkg >/dev/null; then
     say "termux-api paketi oʻrnatilmoqda…"
@@ -161,7 +165,7 @@ install_button() {
   # Ochiq vidjetlar roʻyxatini yangilash (Termux:Widget boʻlmasa — jim oʻtadi).
   command -v am >/dev/null && timeout 10 am broadcast -n com.termux.widget/.TermuxWidgetProvider \
     -a com.termux.widget.ACTION_REFRESH_WIDGET --ei appWidgetId 0 >/dev/null 2>&1
-  ok "Tugmalar tayyor: $BTN, $BTN2, $BTN3, $BTN4, $BTN5"
+  ok "Tugmalar tayyor: $BTN, $BTN2, $BTN3, $BTN4, $BTN5, $BTN6"
   cat <<EOF
 
 ${B}Bosh ekranga qoʻyish (bir marta):${N}
@@ -169,7 +173,7 @@ ${B}Bosh ekranga qoʻyish (bir marta):${N}
      (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan).
   2. Bosh ekranni bosib turing → ${B}Vidjetlar${N} → ${B}Termux:Widget${N} →
      «Termux shortcut» ni ekranga torting → ${B}$BTN${N} ni tanlang
-     (qolgan tugmalar uchun yana: ${B}$BTN2${N}, ${B}$BTN3${N}, ${B}$BTN4${N}, ${B}$BTN5${N}).
+     (qolgan tugmalar uchun yana: ${B}$BTN2${N}, ${B}$BTN3${N}, ${B}$BTN4${N}, ${B}$BTN5${N}, ${B}$BTN6${N}).
   3. Telefon sozlamalari → Ilovalar → Termux → ${B}Boshqa ilovalar ustidan koʻrsatish${N} → yoqing
      (busiz tugma bosilganda Termux oʻzi ochilmaydi).
 
@@ -178,6 +182,7 @@ ${B}$BTN2${N} — Download/YouTube dagi MKV videolarni sifatini yoʻqotmasdan MP
 ${B}$BTN3${N} — nusxalangan havoladan faqat musiqani MP3 qilib yuklaydi (Download/YouTube/Musiqa).
 ${B}$BTN4${N} — nusxalangan Pinterest havolasidan videoni eng yuqori sifatda yuklaydi (Download/YouTube/Pinterest).
 ${B}$BTN5${N} — nusxalangan YouTube havolasidan turkcha subtitrni yuklaydi: .srt, toza matn va soʻzlar roʻyxati (Download/YouTube/Subtitr).
+${B}$BTN6${N} — Download/Kitob papkasidagi kitob rasmlarini ketma-ketlikda bitta PDF ga jamlaydi.
 EOF
 }
 

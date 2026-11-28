@@ -24,7 +24,7 @@ main() {
   yes | pkg upgrade -y -o Dpkg::Options::=--force-confnew || die "Paketlarni yangilab boʻlmadi. Internetni tekshirib, qayta urining."
 
   say "2/4 Python, ffmpeg va Node.js oʻrnatilmoqda…"
-  yes | pkg install -y python python-pip ffmpeg curl || die "Paketlarni oʻrnatib boʻlmadi."
+  yes | pkg install -y python python-pip python-pillow ffmpeg curl || die "Paketlarni oʻrnatib boʻlmadi."
   # Node.js — YouTube'ning himoya skriptlarini yechish uchun (busiz eng yuqori sifatlar chiqmaydi).
   if ! command -v node >/dev/null; then
     yes | pkg install -y nodejs-lts || yes | pkg install -y nodejs || die "Node.js ni oʻrnatib boʻlmadi."
@@ -33,7 +33,7 @@ main() {
   say "3/4 yt buyrugʻi oʻrnatilmoqda…"
   local tmp f
   tmp=$(mktemp -d)
-  for f in yt termux-url-opener mp4 sub; do
+  for f in yt termux-url-opener mp4 sub pdf; do
     curl -fsSL "$BASE/$f" -o "$tmp/$f" || die "$f ni yuklab boʻlmadi: $BASE/$f"
     bash -n "$tmp/$f" || die "$f buzuq holda keldi — qayta urining."
     chmod +x "$tmp/$f"
@@ -47,6 +47,7 @@ main() {
   mv -f "$tmp/yt" "$BIN/yt"
   mv -f "$tmp/mp4" "$BIN/mp4"
   mv -f "$tmp/sub" "$BIN/sub"
+  mv -f "$tmp/pdf" "$BIN/pdf"
   mv -f "$tmp/termux-url-opener" "$opener"
   rm -rf "$tmp"
   "$BIN/yt" yangilash-ytdlp || die "yt-dlp ni oʻrnatib boʻlmadi."
@@ -74,6 +75,7 @@ ${B}Qanday ishlatiladi:${N}
   • Yoki Termux'da yozing:  ${B}yt <havola>${N}
   • Fayllar: ${B}Download/YouTube${N} (galereyada ham koʻrinadi).
   • Eski MKV videolarni MP4 ga (sifat oʻzgarmaydi):  ${B}mp4${N}
+  • Kitob rasmlarini PDF ga:  ${B}pdf${N} (rasmlarni Download/Kitob ga joylang) yoki ${B}Rasmlar-PDF${N} tugmasi
   • Turkcha subtitr (oʻrganish uchun):  ${B}yt subtitr <havola>${N} yoki ${B}Turkcha-subtitr${N} tugmasi
   • Pinterest videosi:  ${B}yt <pinterest havolasi>${N} yoki bosh ekrandagi ${B}Pinterest-yuklash${N} tugmasi
   • Faqat musiqa (MP3):  ${B}yt <havola> 5${N} yoki bosh ekrandagi ${B}YouTube-MP3${N} tugmasi

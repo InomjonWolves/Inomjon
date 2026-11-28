@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Bosh ekran tugmasi (Termux:Widget): Download/Kitob dagi rasmlarni ketma-ketlikda bitta PDF ga jamlaydi.
+# Rasmlar nomi boʻyicha tartiblanadi (1, 2, … 10). Oʻrnatiladi: ~/.shortcuts/Rasmlar-PDF
+PDF="${PREFIX:-/data/data/com.termux/files/usr}/bin/pdf"
+command -v pdf >/dev/null && PDF=$(command -v pdf)
+if [ -x "$PDF" ]; then
+  "$PDF"
+else
+  echo "pdf buyrugʻi topilmadi. Termux'da yozing: yt yangilash"
+fi
+echo
+( : </dev/tty ) 2>/dev/null && read -r -p "Oynani yopish uchun Enter bosing… " _ </dev/tty

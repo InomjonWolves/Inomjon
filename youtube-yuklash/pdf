@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# pdf — papkadagi rasmlarni (kitob sahifalari) ketma-ketlikda bitta PDF ga jamlash (Termux).
+#
+#   pdf                     Download/Kitob papkasidagi rasmlar → Download/Kitob/Kitob.pdf
+#   pdf <papka>             shu papkadagi rasmlar → <papka>/<papka nomi>.pdf
+#   pdf <papka> <nom>       PDF nomi ixtiyoriy: <papka>/<nom>.pdf
+#   pdf -k …                kichikroq fayl (rasm eni 1800 px gacha, sifat 80) — Telegram uchun
+#   pdf -r …                rasm ichidagi aylantirish belgisini inobatga olmaslik
+#
+# Tartib: fayl nomi boʻyicha, raqamlar toʻgʻri (1, 2, … 9, 10, 11 — 1, 10, 11, 2 emas).
+# JPEG rasmlar qayta siqilmaydi (sifat oʻzgarmaydi). Telefon rasmlarining burilishi (EXIF) toʻgʻrilanadi.
+# PNG/WEBP/BMP ham qabul qilinadi. Asl rasmlarga tegilmaydi.
+
+PY="${YT_PYTHON:-python}"
+if [ -t 1 ]; then
+  B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' C=$'\e[36m' N=$'\e[0m'
+else
+  B="" G="" Y="" R="" C="" N=""
+fi
+say()  { printf '%s\n' "${C}›${N} $*"; }
+ok()   { printf '%s\n' "${G}✔${N} $*"; }
+warn() { printf '%s\n' "${Y}!${N} $*"; }
+err()  { printf '%s\n' "${R}✖ $*${N}" >&2; }
+
+PYCODE='
+import os, re, sys, io, zlib
+from PIL import Image, ImageOps
+Image.MAX_IMAGE_PIXELS = None
+folder, out, small, norot = sys.argv[1], sys.argv[2], sys.argv[3] == "1", sys.argv[4] == "1"
+exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff")
+def nat(s): return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
+files = sorted((f for f in os.listdir(folder) if f.lower().endswith(exts) and not f.startswith(".")), key=nat)
+if not files:
+    print("EMPTY"); sys.exit(3)
+
+objs = []   # har element — bytes (obyekt tanasi)
+def add(b): objs.append(b); return len(objs)       # obyekt raqami (1 dan)
+add(b"")  # 1: Catalog (keyin toʻldiriladi)
+add(b"")  # 2: Pages
+page_ids = []
+skipped = []
+for name in files:
+    path = os.path.join(folder, name)
+    try:
+        im = Image.open(path)
+        fmt = im.format
+        orient = 1 if norot else (im.getexif().get(274, 1) or 1)
+        w, h = im.size
+        raw = None
+        if fmt == "JPEG" and orient == 1 and im.mode in ("RGB", "L") and not (small and w > 1800):
+            raw = open(path, "rb").read(); cs = b"/DeviceRGB" if im.mode == "RGB" else b"/DeviceGray"
+        if raw is None:
+            im.load()
+            if not norot: im = ImageOps.exif_transpose(im)
+            if im.mode in ("RGBA", "LA", "P"):
+                im = im.convert("RGBA"); bg = Image.new("RGB", im.size, "white"); bg.paste(im, mask=im.split()[3]); im = bg
+            elif im.mode not in ("RGB", "L"):
+                im = im.convert("RGB")
+            if small and im.width > 1800:
+                im = im.resize((1800, round(im.height * 1800 / im.width)), Image.LANCZOS)
+            buf = io.BytesIO(); im.save(buf, "JPEG", quality=80 if small else 95, optimize=True, subsampling=0 if not small else 2)
+            raw = buf.getvalue(); w, h = im.size; cs = b"/DeviceRGB" if im.mode == "RGB" else b"/DeviceGray"
+    except Exception as e:
+        skipped.append(name); continue
+    pw, ph = w * 72 / 150.0, h * 72 / 150.0          # 150 dpi
+    img_id = add(b"<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace %s /BitsPerComponent 8 /Filter /DCTDecode /Length %d >>\nstream\n" % (w, h, cs, len(raw)) + raw + b"\nendstream")
+    content = b"q %.2f 0 0 %.2f 0 0 cm /Im0 Do Q" % (pw, ph)
+    cont_id = add(b"<< /Length %d >>\nstream\n" % len(content) + content + b"\nendstream")
+    page_id = add(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] /Resources << /XObject << /Im0 %d 0 R >> >> /Contents %d 0 R >>" % (pw, ph, img_id, cont_id))
+    page_ids.append(page_id)
+if not page_ids:
+    print("NOPAGES"); sys.exit(4)
+objs[0] = b"<< /Type /Catalog /Pages 2 0 R >>"
+objs[1] = b"<< /Type /Pages /Count %d /Kids [%s] >>" % (len(page_ids), b" ".join(b"%d 0 R" % i for i in page_ids))
+tmp = out + ".tmp"
+with open(tmp, "wb") as f:
+    f.write(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offs = []
+    for i, b in enumerate(objs, 1):
+        offs.append(f.tell()); f.write(b"%d 0 obj\n" % i + b + b"\nendobj\n")
+    x = f.tell()
+    f.write(b"xref\n0 %d\n0000000000 65535 f \n" % (len(objs) + 1))
+    for o in offs: f.write(b"%010d 00000 n \n" % o)
+    f.write(b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objs) + 1, x))
+os.replace(tmp, out)
+print("OK", len(page_ids), os.path.getsize(out), ",".join(skipped))
+'
+
+human() { awk -v b="$1" 'BEGIN { split("B KB MB GB", u); i = 1; while (b >= 1024 && i < 4) { b /= 1024; i++ }; printf (i > 2 ? "%.1f %s" : "%d %s"), b, u[i] }'; }
+
+main() {
+  local small=0 norot=0 a args=()
+  for a in "$@"; do
+    case "$a" in
+      -h|--help|yordam) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; return 0 ;;
+      -k) small=1 ;;
+      -r) norot=1 ;;
+      *) args+=("$a") ;;
+    esac
+  done
+  "$PY" -c "import PIL" 2>/dev/null || {
+    say "Pillow oʻrnatilmoqda (bir marta)…"
+    command -v pkg >/dev/null && yes | pkg install -y python-pillow >/dev/null 2>&1
+    "$PY" -c "import PIL" 2>/dev/null || { err "Pillow oʻrnatilmadi. Termux'da: pkg install python-pillow"; return 1; }
+  }
+  local dl="" d folder name out
+  for d in /storage/emulated/0/Download "$HOME/storage/downloads"; do [ -d "$d" ] && { dl="$d"; break; }; done
+  folder="${args[0]:-}"
+  if [ -z "$folder" ]; then
+    [ -n "$dl" ] || { err "Xotiraga ruxsat yoʻq. Termux'da: termux-setup-storage"; return 1; }
+    folder="$dl/Kitob"
+    if [ ! -d "$folder" ]; then
+      mkdir -p "$folder"
+      err "Rasmlar uchun papka yaratildi: Download/Kitob"
+      echo "  Kitob sahifalari rasmini shu papkaga joylang (yoki: pdf <papka>), keyin yana ${B}pdf${N}."
+      return 1
+    fi
+  elif [ ! -d "$folder" ]; then
+    # Nisbiy nom: Download ichidan qidiramiz
+    if [ -n "$dl" ] && [ -d "$dl/$folder" ]; then folder="$dl/$folder"; else err "Papka topilmadi: $folder"; return 1; fi
+  fi
+  folder="${folder%/}"
+  name="${args[1]:-$(basename "$folder")}"; name="${name%.pdf}"
+  out="$folder/$name.pdf"
+
+  say "Rasmlar: ${B}${folder#/storage/emulated/0/}${N}"
+  local res rc
+  res=$("$PY" -I -c "$PYCODE" "$folder" "$out" "$small" "$norot" 2>&1); rc=$?
+  case "$rc:$res" in
+    3:*) err "Papkada rasm yoʻq (jpg, png, webp)."; return 1 ;;
+    4:*) err "Rasmlarni oʻqib boʻlmadi."; return 1 ;;
+    0:OK*) ;;
+    *) err "PDF yasab boʻlmadi: ${res##*$'\n'}"; return 1 ;;
+  esac
+  local pages size sk
+  read -r _ pages size sk <<<"$res"
+  ok "${B}$name.pdf${N}: $pages sahifa, $(human "$size")"
+  [ -n "$sk" ] && warn "Oʻqib boʻlmadigan rasmlar oʻtkazib yuborildi: $sk"
+  say "${out#/storage/emulated/0/}"
+  command -v termux-media-scan >/dev/null && timeout 20 termux-media-scan "$out" >/dev/null 2>&1
+  return 0
+}
+
+main "$@"

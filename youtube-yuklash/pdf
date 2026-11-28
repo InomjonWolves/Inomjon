@@ -6,10 +6,14 @@
 #   pdf <papka> <nom>       PDF nomi ixtiyoriy: <papka>/<nom>.pdf
 #   pdf -k …                kichikroq fayl (rasm eni 1800 px gacha, sifat 80) — Telegram uchun
 #   pdf -r …                rasm ichidagi aylantirish belgisini inobatga olmaslik
+#   pdf -o …                OCR: matnni taniydi — PDF ichidan qidirish/nusxalash mumkin + .txt fayl
+#   pdf -o -l uzb …         OCR tili: tur (standart), uzb, uzb_cyrl, eng; bir nechtasi: tur+eng
 #
 # Tartib: fayl nomi boʻyicha, raqamlar toʻgʻri (1, 2, … 9, 10, 11 — 1, 10, 11, 2 emas).
 # JPEG rasmlar qayta siqilmaydi (sifat oʻzgarmaydi). Telefon rasmlarining burilishi (EXIF) toʻgʻrilanadi.
 # PNG/WEBP/BMP ham qabul qilinadi. Asl rasmlarga tegilmaydi.
+# OCR (-o) rasmlarni Tesseract bilan oʻqiydi: birinchi marta dastur va til maʼlumoti (~5–40 MB)
+# oʻzi yuklanadi, keyin internetsiz ishlaydi. Telefonda ~5–20 soniya/sahifa.
 
 PY="${YT_PYTHON:-python}"
 if [ -t 1 ]; then
@@ -86,18 +90,113 @@ os.replace(tmp, out)
 print("OK", len(page_ids), os.path.getsize(out), ",".join(skipped))
 '
 
+PYNORM='
+import os, re, sys
+from PIL import Image, ImageOps
+Image.MAX_IMAGE_PIXELS = None
+folder, outdir, small, norot = sys.argv[1], sys.argv[2], sys.argv[3] == "1", sys.argv[4] == "1"
+exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff")
+def nat(s): return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
+files = sorted((f for f in os.listdir(folder) if f.lower().endswith(exts) and not f.startswith(".")), key=nat)
+cap = 1800 if small else 3000       # OCR uchun yetarli (~300 dpi), tezroq
+n, skipped, lst = 0, [], []
+for name in files:
+    try:
+        im = Image.open(os.path.join(folder, name)); im.load()
+        if not norot: im = ImageOps.exif_transpose(im)
+        if im.mode in ("RGBA", "LA", "P"):
+            im = im.convert("RGBA"); bg = Image.new("RGB", im.size, "white"); bg.paste(im, mask=im.split()[3]); im = bg
+        elif im.mode not in ("RGB", "L"):
+            im = im.convert("RGB")
+        if im.width > cap: im = im.resize((cap, round(im.height * cap / im.width)), Image.LANCZOS)
+        n += 1; p = os.path.join(outdir, "%05d.jpg" % n)
+        im.save(p, "JPEG", quality=85 if small else 92, dpi=(300, 300)); lst.append(p)
+    except Exception:
+        skipped.append(name)
+open(os.path.join(outdir, "list.txt"), "w").write("\n".join(lst) + "\n")
+print(n, ",".join(skipped))
+'
+
 human() { awk -v b="$1" 'BEGIN { split("B KB MB GB", u); i = 1; while (b >= 1024 && i < 4) { b /= 1024; i++ }; printf (i > 2 ? "%.1f %s" : "%d %s"), b, u[i] }'; }
 
+# ---------- OCR ----------
+
+TESSDIR=""
+TESSDATA_URL="${TESSDATA_URL:-https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main}"
+
+ocr_setup() {
+  local lang="$1" l
+  if ! command -v tesseract >/dev/null; then
+    say "Tesseract (OCR dasturi) oʻrnatilmoqda — bir marta…"
+    command -v pkg >/dev/null && yes | pkg install -y tesseract >/dev/null 2>&1
+    command -v tesseract >/dev/null || { err "Tesseract oʻrnatilmadi. Termux'da: pkg install tesseract"; return 1; }
+  fi
+  # Tesseract'ning oʻz maʼlumotlar papkasi (til fayllari, configs/, pdf.ttf shu yerda). Yozib boʻlmasa — nusxasi.
+  local sys
+  sys=$(tesseract --list-langs 2>&1 | sed -n '1s/^[^"]*"\(.*\)".*$/\1/p'); sys="${sys%/}"
+  if [ -z "${TESSDATA_DIR:-}" ] && [ -n "$sys" ] && [ -w "$sys" ]; then
+    TESSDIR="$sys"
+  else
+    TESSDIR="${TESSDATA_DIR:-$HOME/.local/share/tessdata}"
+    mkdir -p "$TESSDIR"
+    [ -n "$sys" ] && [ -d "$sys" ] && cp -rn "$sys"/. "$TESSDIR"/ 2>/dev/null
+  fi
+  for l in ${lang//+/ }; do
+    [ -s "$TESSDIR/$l.traineddata" ] && continue
+    say "Til maʼlumoti yuklanmoqda: ${B}$l${N}…"
+    if ! curl -fsSL "$TESSDATA_URL/$l.traineddata" -o "$TESSDIR/$l.traineddata.tmp" || [ ! -s "$TESSDIR/$l.traineddata.tmp" ]; then
+      rm -f "$TESSDIR/$l.traineddata.tmp"
+      err "«$l» til maʼlumotini yuklab boʻlmadi. Til nomi toʻgʻrimi (tur, uzb, uzb_cyrl, eng)? Internet bormi?"
+      return 1
+    fi
+    mv -f "$TESSDIR/$l.traineddata.tmp" "$TESSDIR/$l.traineddata"
+  done
+}
+
+ocr_run() {
+  local folder="$1" out="$2" small="$3" norot="$4" lang="$5" tmp res n sk base
+  ocr_setup "$lang" || return 1
+  tmp=$(mktemp -d)
+  res=$("$PY" -I -c "$PYNORM" "$folder" "$tmp" "$small" "$norot" 2>&1) || { err "Rasmlarni tayyorlab boʻlmadi: ${res##*$'\n'}"; rm -rf "$tmp"; return 1; }
+  read -r n sk <<<"$res"
+  [ "${n:-0}" -gt 0 ] 2>/dev/null || { err "Papkada rasm yoʻq (jpg, png, webp)."; rm -rf "$tmp"; return 1; }
+  [ -n "$sk" ] && warn "Oʻqib boʻlmadigan rasmlar oʻtkazib yuborildi: $sk"
+  say "$n sahifa matni taniladi (til: ${B}$lang${N}). Telefonda ~5–20 soniya/sahifa — kuting…"
+  command -v termux-wake-lock >/dev/null && termux-wake-lock 2>/dev/null
+  base="${out%.pdf}"
+  local cur=0 line
+  tesseract "$tmp/list.txt" "$tmp/natija" -l "$lang" --tessdata-dir "$TESSDIR" pdf txt 2>&1 | while IFS= read -r line; do
+    case "$line" in Page*) cur=$((cur + 1)); printf '\r  %s/%s sahifa…' "$cur" "$n" >&2 ;; esac
+  done
+  printf '\r%*s\r' 40 '' >&2
+  command -v termux-wake-unlock >/dev/null && termux-wake-unlock 2>/dev/null
+  if [ ! -s "$tmp/natija.pdf" ]; then
+    err "OCR bajarilmadi."; rm -rf "$tmp"; return 1
+  fi
+  mv -f "$tmp/natija.pdf" "$base.pdf"; mv -f "$tmp/natija.txt" "$base.txt" 2>/dev/null
+  rm -rf "$tmp"
+  command -v termux-media-scan >/dev/null && timeout 20 termux-media-scan "$base.pdf" >/dev/null 2>&1
+  local words; words=$(wc -w <"$base.txt" 2>/dev/null | tr -d ' ')
+  ok "${B}$(basename "$base").pdf${N}: $n sahifa, matn taniladi (${words:-0} soʻz)"
+  say "${base#/storage/emulated/0/}.pdf  + .txt"
+  echo "  PDF ichidan qidirish va matnni nusxalash mumkin. Toza matn: $(basename "$base").txt"
+  echo "  ${Y}Tekshiring:${N} OCR xato qilishi mumkin (ayniqsa xira rasm, oʻʻ gʻ belgilari)."
+}
+
 main() {
-  local small=0 norot=0 a args=()
-  for a in "$@"; do
+  local small=0 norot=0 ocr=0 lang=tur a args=()
+  while [ $# -gt 0 ]; do
+    a="$1"; shift
     case "$a" in
-      -h|--help|yordam) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; return 0 ;;
+      -h|--help|yordam) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; return 0 ;;
       -k) small=1 ;;
       -r) norot=1 ;;
+      -o|--ocr) ocr=1 ;;
+      -l) lang="${1:-}"; [ -n "$lang" ] || { err "-l dan keyin til yozing: tur, uzb, eng"; return 1; }; shift; ocr=1 ;;
       *) args+=("$a") ;;
     esac
   done
+  case "$lang" in *[!a-zA-Z_+]*|"") err "Notoʻgʻri til: $lang (masalan: tur, uzb, tur+eng)"; return 1 ;; esac
   "$PY" -c "import PIL" 2>/dev/null || {
     say "Pillow oʻrnatilmoqda (bir marta)…"
     command -v pkg >/dev/null && yes | pkg install -y python-pillow >/dev/null 2>&1
@@ -124,6 +223,7 @@ main() {
   out="$folder/$name.pdf"
 
   say "Rasmlar: ${B}${folder#/storage/emulated/0/}${N}"
+  [ "$ocr" = 1 ] && { ocr_run "$folder" "$out" "$small" "$norot" "$lang"; return; }
   local res rc
   res=$("$PY" -I -c "$PYCODE" "$folder" "$out" "$small" "$norot" 2>&1); rc=$?
   case "$rc:$res" in

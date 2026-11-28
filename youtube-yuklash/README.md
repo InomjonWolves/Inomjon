@@ -98,17 +98,57 @@ pdf -k Kitob2            # kichikroq fayl (Telegram'ga yuborish uchun)
 - **Sifat oʻzgarmaydi.** JPEG rasmlar qayta siqilmaydi, toʻgʻridan-toʻgʻri PDF ichiga joylanadi. `-k` — hajmni 2–3 barobar kamaytiradi (rasm eni 1800 px gacha).
 - Telefonda yonboshlab olingan rasmlar **oʻzi toʻgʻrilanadi**. Oʻchirish: `-r`.
 - PNG va WEBP ham ishlaydi. Oʻqib boʻlmaydigan fayl oʻtkazib yuboriladi va aytiladi. Asl rasmlarga tegilmaydi.
-- Matnni qidirib boʻladigan PDF (OCR) emas — sahifalar rasm koʻrinishida.
+- Oddiy `pdf` matnni **tanimaydi** — sahifalar rasm koʻrinishida. Qidirish va nusxalash uchun quyidagi OCR rejimidan foydalaning.
+
+### OCR: matni taniladigan PDF
+
+```sh
+pdf -o                   # Download/Kitob → Kitob.pdf (qidiriladigan) + Kitob.txt, til: turkcha
+pdf -o Kitob2 Tarix      # boshqa papka va nom
+pdf -l uzb Kitob2        # oʻzbek tili (lotin). -l ishlatilsa -o shart emas
+pdf -l uzb_cyrl Kitob2   # oʻzbek kirill
+pdf -l tur+eng Kitob2    # aralash: turkcha va inglizcha matn
+pdf -o -k Kitob2         # tezroq va kichikroq (rasm eni 1800 px)
+```
+
+Yoki bosh ekrandagi moviy-yashil **Kitob-OCR** tugmasi (turkcha, Download/Kitob).
+
+- **Natija:** `….pdf` — oddiy PDF dek koʻrinadi, lekin matn ustiga qatlam sifatida yozilgan: PDF ichidan **qidirish**, soʻzni belgilab **nusxalash** mumkin. `….txt` — toza matn (Notes, Word yoki tarjimonga qoʻyish uchun).
+- **Til:** `tur` (standart), `uzb`, `uzb_cyrl`, `eng`. Birinchi marta ishlatilganda dastur (Tesseract) va til maʼlumoti (4–40 MB) **oʻzi yuklanadi**, keyin internet kerak emas.
+- **Tezlik:** telefonga qarab ~5–20 soniya/sahifa. 100 sahifali kitob 10–30 daqiqa oladi — ekran oʻchsa ham davom etadi (Termux «wake lock» oladi), lekin Termux'ni yopmang. Ekranda `12/100 sahifa…` koʻrinib turadi.
+- **Aniqlik** (yaxshi suratda): bosma turkcha matn — juda yaxshi, harflar (ı İ ş ğ ö ü ç) toʻgʻri. Oʻzbekcha lotin (`oʻ`, `gʻ`) — yaxshi, lekin baʼzan xato. Qoʻlyozma va xira rasm yomon taniladi.
+
+#### Yaxshi natija uchun suratga olish
+1. Sahifa **yorugʻda**, soyasiz (telefon soyasi tushmasin).
+2. Telefonni sahifaga **tik** tuting, qiyshaytirmang; sahifa ekranni toʻldirsin.
+3. Fokus aniq boʻlsin, harakatsiz; **yaxshi hujjat skaneri** ilovalari (Google Drive «Skanerlash», Microsoft Lens) rasmni tekislaydi — OCR sifati ancha oshadi.
+4. Bitta kitob — bitta papka. Fayl nomlari tartibga mos boʻlsin.
+
+#### Toʻliq tartib: kitobni PDF qilish
+1. Sahifalarni suratga oling → rasmlar `Download/Kitob` ga tushadi (yoki Fayllar ilovasida koʻchiring).
+2. Eski rasmlar aralashib ketmasin: har yangi kitob uchun alohida papka (`Download/Tarix`) — keyin `pdf -o Tarix`.
+3. Termux'da `pdf -o` yozing yoki tugmani bosing, kuting.
+4. `Download/Kitob` da `Kitob.pdf` va `Kitob.txt`. Kerak boʻlsa `pdf -k` bilan kichik nusxa oling va Telegram'ga yuboring.
+5. Natijani koʻzdan kechiring: OCR xato qilgan joylar `.txt` da qoladi — Notes ilovasida tuzatish mumkin.
+
+#### Muammolar
+| Belgi | Yechim |
+|---|---|
+| «Til maʼlumotini yuklab boʻlmadi» | Internetni tekshiring; til nomi toʻgʻrimi (`tur`, `uzb`, `eng`) |
+| «Papkada rasm yoʻq» | Rasmlar `jpg/png/webp` va papkaning oʻzida boʻlishi kerak (ichki papkalar olinmaydi) |
+| Matn bir-birining ichiga kirib ketgan | Ikki sahifali yoyilma (kitobning ikkala sahifasi bir rasmda) — har sahifani alohida suratga oling |
+| Juda sekin | `pdf -o -k` (kichik rasm) yoki Termux'ni batareya tejashdan chiqaring |
+| Gʻalati belgilar | Rasm xira yoki qiyshiq; yaxshiroq surat yoki skaner ilovasi |
 
 ## 7. Bosh ekran tugmalari (ixtiyoriy)
 
-Qizil **YouTube-yuklash** — nusxalangan havolani yuklaydi (sifatni soʻraydi). Binafsha **YouTube-MP3** — soʻramasdan musiqani MP3 qilib yuklaydi. Yashil **MKV-dan-MP4** — papkadagi MKV larni MP4 ga oʻtkazadi. Koʻk **Turkcha-subtitr** — subtitr va soʻzlar roʻyxatini tayyorlaydi. Toʻq sariq **Rasmlar-PDF** — Download/Kitob dagi rasmlarni PDF ga jamlaydi. Pushti **Pinterest-yuklash** — nusxalangan pin havolasidan videoni eng yuqori sifatda yuklaydi.
+Qizil **YouTube-yuklash** — nusxalangan havolani yuklaydi (sifatni soʻraydi). Binafsha **YouTube-MP3** — soʻramasdan musiqani MP3 qilib yuklaydi. Yashil **MKV-dan-MP4** — papkadagi MKV larni MP4 ga oʻtkazadi. Koʻk **Turkcha-subtitr** — subtitr va soʻzlar roʻyxatini tayyorlaydi. Toʻq sariq **Rasmlar-PDF** — Download/Kitob dagi rasmlarni PDF ga jamlaydi. Moviy-yashil **Kitob-OCR** — xuddi shu, lekin matnni ham taniydi. Pushti **Pinterest-yuklash** — nusxalangan pin havolasidan videoni eng yuqori sifatda yuklaydi.
 
 1. F-Droid'dan yana ikkita kichik ilova oʻrnating (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan — aks holda ishlamaydi):
    - **Termux:Widget** — https://f-droid.org/packages/com.termux.widget/
    - **Termux:API** — https://f-droid.org/packages/com.termux.api/ (nusxalangan havolani oʻqish uchun)
 2. Termux'da bir marta yozing: `yt tugma` (yangi oʻrnatishda bu oʻzi bajariladi).
-3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang. Qolgan tugmalar uchun yana bir martadan — **YouTube-MP3**, **MKV-dan-MP4**, **Pinterest-yuklash**, **Turkcha-subtitr**, **Rasmlar-PDF**.
+3. Bosh ekranni bosib turing → **Vidjetlar** → **Termux:Widget** → **Termux shortcut** ni ekranga torting → **YouTube-yuklash** ni tanlang. Qolgan tugmalar uchun yana bir martadan — **YouTube-MP3**, **MKV-dan-MP4**, **Pinterest-yuklash**, **Turkcha-subtitr**, **Rasmlar-PDF**, **Kitob-OCR**.
 4. Telefon sozlamalari → Ilovalar → Termux → **Boshqa ilovalar ustidan koʻrsatish** → yoqing. Busiz tugma bosilganda Termux oʻzi ochilmaydi (Android 10+).
 
 Ishlatish: YouTube'da **Ulashish → Nusxa olish**, keyin tugmani bosing. Buferda havola boʻlmasa, Termux havolani soʻraydi.
@@ -133,8 +173,8 @@ Faqat oʻzingiz koʻrish uchun yuklang. Mualliflik huquqi bilan himoyalangan vid
 
 ```sh
 rm -f $PREFIX/bin/yt $PREFIX/bin/mp4 $PREFIX/bin/sub $PREFIX/bin/pdf ~/bin/termux-url-opener
-rm -f ~/.shortcuts/YouTube-yuklash ~/.shortcuts/MKV-dan-MP4 ~/.shortcuts/YouTube-MP3 ~/.shortcuts/Pinterest-yuklash ~/.shortcuts/Turkcha-subtitr ~/.shortcuts/Rasmlar-PDF
-rm -f ~/.shortcuts/icons/YouTube-yuklash.png ~/.shortcuts/icons/MKV-dan-MP4.png ~/.shortcuts/icons/YouTube-MP3.png ~/.shortcuts/icons/Pinterest-yuklash.png ~/.shortcuts/icons/Turkcha-subtitr.png ~/.shortcuts/icons/Rasmlar-PDF.png
+rm -f ~/.shortcuts/YouTube-yuklash ~/.shortcuts/MKV-dan-MP4 ~/.shortcuts/YouTube-MP3 ~/.shortcuts/Pinterest-yuklash ~/.shortcuts/Turkcha-subtitr ~/.shortcuts/Rasmlar-PDF ~/.shortcuts/Kitob-OCR
+rm -f ~/.shortcuts/icons/YouTube-yuklash.png ~/.shortcuts/icons/MKV-dan-MP4.png ~/.shortcuts/icons/YouTube-MP3.png ~/.shortcuts/icons/Pinterest-yuklash.png ~/.shortcuts/icons/Turkcha-subtitr.png ~/.shortcuts/icons/Rasmlar-PDF.png ~/.shortcuts/icons/Kitob-OCR.png
 pip uninstall -y yt-dlp yt-dlp-ejs
 ```
 
@@ -147,7 +187,8 @@ pip uninstall -y yt-dlp yt-dlp-ejs
 | `termux-url-opener` | «Ulashish → Termux» bosilganda havolani `yt` ga beradi (`~/bin/` ga oʻrnatiladi) |
 | `mp4` | MKV/WEBM → MP4: video qayta kodlanmaydi, natija tekshiriladi |
 | `tugma`, `tugma.png` | Bosh ekran tugmasi va uning belgisi (`yt tugma` → `~/.shortcuts/YouTube-yuklash`) |
-| `pdf` | Kitob rasmlari → bitta PDF (tartib, burilish, `-k` — kichik fayl) |
+| `pdf` | Kitob rasmlari → bitta PDF (tartib, burilish, `-k` — kichik fayl, `-o` — OCR) |
+| `tugma-ocr`, `tugma-ocr.png` | Yettinchi tugma: Download/Kitob → qidiriladigan PDF, OCR (`~/.shortcuts/Kitob-OCR`) |
 | `tugma-pdf`, `tugma-pdf.png` | Oltinchi tugma: Download/Kitob → PDF (`~/.shortcuts/Rasmlar-PDF`) |
 | `sub` | Subtitr: `.srt`, toza matn va soʻzlar roʻyxati (`yt subtitr`) |
 | `tugma-sub`, `tugma-sub.png` | Beshinchi tugma: turkcha subtitr (`~/.shortcuts/Turkcha-subtitr`) |

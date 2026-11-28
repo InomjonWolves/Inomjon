@@ -12,7 +12,7 @@
 # YouTube ilovasida «Ulashish → Termux» ham shu skriptni ochadi (~/bin/termux-url-opener).
 # Ichida yt-dlp (ochiq kodli yuklovchi) va ffmpeg (video + audioni birlashtiradi) ishlaydi.
 
-YT_VERSION="1.6"
+YT_VERSION="1.7"
 YT_BASE="${YT_BASE:-https://raw.githubusercontent.com/InomjonWolves/Inomjon/ccr-dc03c86a-hhey2p/youtube-yuklash}"
 PY="${YT_PYTHON:-python}"
 STATE="$HOME/.local/state/yt"
@@ -23,6 +23,7 @@ BTN3="YouTube-MP3"      # uchinchi tugma: nusxalangan havoladan musiqa (MP3)
 BTN4="Pinterest-yuklash" # toʻrtinchi tugma: Pinterest videosi
 BTN5="Turkcha-subtitr"   # beshinchi tugma: videoning turkcha subtitri
 BTN6="Rasmlar-PDF"       # oltinchi tugma: Download/Kitob dagi rasmlar → PDF
+BTN7="Kitob-OCR"         # yettinchi tugma: rasmlar → matni taniladigan PDF (OCR)
 
 if [ -t 1 ]; then
   B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' C=$'\e[36m' D=$'\e[2m' N=$'\e[0m'
@@ -55,6 +56,7 @@ ${B}yt${N} — YouTube'dan telefonga eng yuqori sifatda yuklash  ${D}(v$YT_VERSI
   yt <havola> 6       musiqa — M4A (YouTube'ning asl ovozi, oʻzgarishsiz)
   yt subtitr <havola> turkcha subtitr: .srt, toza matn va soʻzlar roʻyxati (sub <havola> ham)
   pdf [papka]         papkadagi kitob rasmlarini bitta PDF ga jamlash (pdf -k — kichikroq fayl)
+  pdf -o [papka]      shu, lekin matnni taniydi (OCR): qidiriladigan PDF + .txt (-l uzb — til)
   yt <pinterest>      Pinterest videosi — eng yuqori sifatda, menyusiz (Download/YouTube/Pinterest)
   yt yangilash        yt-dlp va skriptlarni yangilash
   yt tugma            bosh ekran tugmalarini oʻrnatish
@@ -157,6 +159,7 @@ install_button() {
   put_button tugma-pin "$BTN4"
   put_button tugma-sub "$BTN5"
   put_button tugma-pdf "$BTN6"
+  put_button tugma-ocr "$BTN7"
   # Nusxalangan havolani oʻqish uchun (Termux:API ilovasi bilan ishlaydi).
   if ! command -v termux-clipboard-get >/dev/null && command -v pkg >/dev/null; then
     say "termux-api paketi oʻrnatilmoqda…"
@@ -165,7 +168,7 @@ install_button() {
   # Ochiq vidjetlar roʻyxatini yangilash (Termux:Widget boʻlmasa — jim oʻtadi).
   command -v am >/dev/null && timeout 10 am broadcast -n com.termux.widget/.TermuxWidgetProvider \
     -a com.termux.widget.ACTION_REFRESH_WIDGET --ei appWidgetId 0 >/dev/null 2>&1
-  ok "Tugmalar tayyor: $BTN, $BTN2, $BTN3, $BTN4, $BTN5, $BTN6"
+  ok "Tugmalar tayyor: $BTN, $BTN2, $BTN3, $BTN4, $BTN5, $BTN6, $BTN7"
   cat <<EOF
 
 ${B}Bosh ekranga qoʻyish (bir marta):${N}
@@ -173,7 +176,7 @@ ${B}Bosh ekranga qoʻyish (bir marta):${N}
      (Termux'ni qayerdan olgan boʻlsangiz, oʻsha joydan).
   2. Bosh ekranni bosib turing → ${B}Vidjetlar${N} → ${B}Termux:Widget${N} →
      «Termux shortcut» ni ekranga torting → ${B}$BTN${N} ni tanlang
-     (qolgan tugmalar uchun yana: ${B}$BTN2${N}, ${B}$BTN3${N}, ${B}$BTN4${N}, ${B}$BTN5${N}, ${B}$BTN6${N}).
+     (qolgan tugmalar uchun yana: ${B}$BTN2${N}, ${B}$BTN3${N}, ${B}$BTN4${N}, ${B}$BTN5${N}, ${B}$BTN6${N}, ${B}$BTN7${N}).
   3. Telefon sozlamalari → Ilovalar → Termux → ${B}Boshqa ilovalar ustidan koʻrsatish${N} → yoqing
      (busiz tugma bosilganda Termux oʻzi ochilmaydi).
 
@@ -183,6 +186,7 @@ ${B}$BTN3${N} — nusxalangan havoladan faqat musiqani MP3 qilib yuklaydi (Downl
 ${B}$BTN4${N} — nusxalangan Pinterest havolasidan videoni eng yuqori sifatda yuklaydi (Download/YouTube/Pinterest).
 ${B}$BTN5${N} — nusxalangan YouTube havolasidan turkcha subtitrni yuklaydi: .srt, toza matn va soʻzlar roʻyxati (Download/YouTube/Subtitr).
 ${B}$BTN6${N} — Download/Kitob papkasidagi kitob rasmlarini ketma-ketlikda bitta PDF ga jamlaydi.
+${B}$BTN7${N} — xuddi shu, lekin matnni taniydi (OCR): PDF ichidan qidirish va nusxalash mumkin, .txt ham beradi.
 EOF
 }
 

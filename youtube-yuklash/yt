@@ -12,7 +12,7 @@
 # YouTube ilovasida «Ulashish → Termux» ham shu skriptni ochadi (~/bin/termux-url-opener).
 # Ichida yt-dlp (ochiq kodli yuklovchi) va ffmpeg (video + audioni birlashtiradi) ishlaydi.
 
-YT_VERSION="1.7"
+YT_VERSION="1.8"
 YT_BASE="${YT_BASE:-https://raw.githubusercontent.com/InomjonWolves/Inomjon/ccr-dc03c86a-hhey2p/youtube-yuklash}"
 PY="${YT_PYTHON:-python}"
 STATE="$HOME/.local/state/yt"

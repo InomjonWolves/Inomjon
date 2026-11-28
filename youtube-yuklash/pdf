@@ -4,7 +4,8 @@
 #   pdf                     Download/Kitob papkasidagi rasmlar → Download/Kitob/Kitob.pdf
 #   pdf <papka>             shu papkadagi rasmlar → <papka>/<papka nomi>.pdf
 #   pdf <papka> <nom>       PDF nomi ixtiyoriy: <papka>/<nom>.pdf
-#   pdf -k …                kichikroq fayl (rasm eni 1800 px gacha, sifat 80) — Telegram uchun
+#   pdf -k …                ixcham: rasm eni 1800 px gacha, sifat 80 (odatda 3–6 barobar kichik)
+#   pdf -kk …               juda ixcham: 1400 px, oq-qora (kulrang), sifat 65 (odatda 8–15 barobar kichik)
 #   pdf -r …                rasm ichidagi aylantirish belgisini inobatga olmaslik
 #   pdf -o …                OCR: matnni taniydi — PDF ichidan qidirish/nusxalash mumkin + .txt fayl
 #   pdf -o -l uzb …         OCR tili: tur (standart), uzb, uzb_cyrl, eng; bir nechtasi: tur+eng
@@ -30,12 +31,14 @@ PYCODE='
 import os, re, sys, io, zlib
 from PIL import Image, ImageOps
 Image.MAX_IMAGE_PIXELS = None
-folder, out, small, norot = sys.argv[1], sys.argv[2], sys.argv[3] == "1", sys.argv[4] == "1"
+folder, out, lvl, norot = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4] == "1"
+cap, q, gray = {0: None, 1: 1800, 2: 1400}[lvl], {0: 95, 1: 80, 2: 65}[lvl], lvl == 2
 exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff")
 def nat(s): return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
 files = sorted((f for f in os.listdir(folder) if f.lower().endswith(exts) and not f.startswith(".")), key=nat)
 if not files:
     print("EMPTY"); sys.exit(3)
+orig = 0
 
 objs = []   # har element — bytes (obyekt tanasi)
 def add(b): objs.append(b); return len(objs)       # obyekt raqami (1 dan)
@@ -51,7 +54,7 @@ for name in files:
         orient = 1 if norot else (im.getexif().get(274, 1) or 1)
         w, h = im.size
         raw = None
-        if fmt == "JPEG" and orient == 1 and im.mode in ("RGB", "L") and not (small and w > 1800):
+        if fmt == "JPEG" and orient == 1 and im.mode in ("RGB", "L") and lvl == 0:
             raw = open(path, "rb").read(); cs = b"/DeviceRGB" if im.mode == "RGB" else b"/DeviceGray"
         if raw is None:
             im.load()
@@ -60,12 +63,15 @@ for name in files:
                 im = im.convert("RGBA"); bg = Image.new("RGB", im.size, "white"); bg.paste(im, mask=im.split()[3]); im = bg
             elif im.mode not in ("RGB", "L"):
                 im = im.convert("RGB")
-            if small and im.width > 1800:
-                im = im.resize((1800, round(im.height * 1800 / im.width)), Image.LANCZOS)
-            buf = io.BytesIO(); im.save(buf, "JPEG", quality=80 if small else 95, optimize=True, subsampling=0 if not small else 2)
+            if gray and im.mode != "L":
+                im = ImageOps.autocontrast(im.convert("L"), cutoff=1)
+            if cap and im.width > cap:
+                im = im.resize((cap, round(im.height * cap / im.width)), Image.LANCZOS)
+            buf = io.BytesIO(); im.save(buf, "JPEG", quality=q, optimize=True, subsampling=0 if lvl == 0 else 2)
             raw = buf.getvalue(); w, h = im.size; cs = b"/DeviceRGB" if im.mode == "RGB" else b"/DeviceGray"
     except Exception as e:
         skipped.append(name); continue
+    orig += os.path.getsize(path)
     pw, ph = w * 72 / 150.0, h * 72 / 150.0          # 150 dpi
     img_id = add(b"<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace %s /BitsPerComponent 8 /Filter /DCTDecode /Length %d >>\nstream\n" % (w, h, cs, len(raw)) + raw + b"\nendstream")
     content = b"q %.2f 0 0 %.2f 0 0 cm /Im0 Do Q" % (pw, ph)
@@ -87,18 +93,18 @@ with open(tmp, "wb") as f:
     for o in offs: f.write(b"%010d 00000 n \n" % o)
     f.write(b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objs) + 1, x))
 os.replace(tmp, out)
-print("OK", len(page_ids), os.path.getsize(out), ",".join(skipped))
+print("OK", len(page_ids), os.path.getsize(out), orig, ",".join(skipped))
 '
 
 PYNORM='
 import os, re, sys
 from PIL import Image, ImageOps
 Image.MAX_IMAGE_PIXELS = None
-folder, outdir, small, norot = sys.argv[1], sys.argv[2], sys.argv[3] == "1", sys.argv[4] == "1"
+folder, outdir, lvl, norot = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4] == "1"
 exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff")
 def nat(s): return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
 files = sorted((f for f in os.listdir(folder) if f.lower().endswith(exts) and not f.startswith(".")), key=nat)
-cap = 1800 if small else 3000       # OCR uchun yetarli (~300 dpi), tezroq
+cap = {0: 3000, 1: 1800, 2: 1400}[lvl]       # OCR uchun yetarli (~300 dpi), tezroq
 n, skipped, lst = 0, [], []
 for name in files:
     try:
@@ -110,7 +116,7 @@ for name in files:
             im = im.convert("RGB")
         if im.width > cap: im = im.resize((cap, round(im.height * cap / im.width)), Image.LANCZOS)
         n += 1; p = os.path.join(outdir, "%05d.jpg" % n)
-        im.save(p, "JPEG", quality=85 if small else 92, dpi=(300, 300)); lst.append(p)
+        im.save(p, "JPEG", quality=92 if lvl == 0 else 85, dpi=(300, 300)); lst.append(p)
     except Exception:
         skipped.append(name)
 open(os.path.join(outdir, "list.txt"), "w").write("\n".join(lst) + "\n")
@@ -188,8 +194,9 @@ main() {
   while [ $# -gt 0 ]; do
     a="$1"; shift
     case "$a" in
-      -h|--help|yordam) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; return 0 ;;
+      -h|--help|yordam) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; return 0 ;;
       -k) small=1 ;;
+      -kk|-K) small=2 ;;
       -r) norot=1 ;;
       -o|--ocr) ocr=1 ;;
       -l) lang="${1:-}"; [ -n "$lang" ] || { err "-l dan keyin til yozing: tur, uzb, eng"; return 1; }; shift; ocr=1 ;;
@@ -232,9 +239,13 @@ main() {
     0:OK*) ;;
     *) err "PDF yasab boʻlmadi: ${res##*$'\n'}"; return 1 ;;
   esac
-  local pages size sk
-  read -r _ pages size sk <<<"$res"
+  local pages size orig sk
+  read -r _ pages size orig sk <<<"$res"
   ok "${B}$name.pdf${N}: $pages sahifa, $(human "$size")"
+  if [ "${orig:-0}" -gt 0 ] 2>/dev/null; then
+    echo "  Rasmlar jami: $(human "$orig") → PDF: ${B}$(human "$size")${N}"
+    [ "$small" = 0 ] && [ "$size" -gt 5000000 ] 2>/dev/null && echo "  ${Y}Kichikroq fayl kerakmi?${N} ${B}pdf -k${N} yoki ${B}pdf -kk${N}"
+  fi
   [ -n "$sk" ] && warn "Oʻqib boʻlmadigan rasmlar oʻtkazib yuborildi: $sk"
   say "${out#/storage/emulated/0/}"
   command -v termux-media-scan >/dev/null && timeout 20 termux-media-scan "$out" >/dev/null 2>&1

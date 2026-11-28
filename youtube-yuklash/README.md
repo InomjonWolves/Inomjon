@@ -91,11 +91,21 @@ Kitob sahifalarini suratga olgan boʻlsangiz, hammasini ketma-ketlikda bitta PDF
 pdf                      # Download/Kitob → Kitob.pdf
 pdf Kitob2               # Download/Kitob2 → Kitob2/Kitob2.pdf
 pdf Kitob2 Tarix         # PDF nomi: Tarix.pdf
-pdf -k Kitob2            # kichikroq fayl (Telegram'ga yuborish uchun)
+pdf -k Kitob2            # ixcham fayl (3–6 barobar kichik)
+pdf -kk Kitob2           # juda ixcham: oq-qora, 8–15 barobar kichik
 ```
 
 - **Tartib** fayl nomi boʻyicha va raqamlar toʻgʻri: `1, 2, … 9, 10, 11` (`1, 10, 11, 2` emas). Rasmlar `IMG_001`, `IMG_002`… yoki `1`, `2`… deb nomlangan boʻlsa, tartib saqlanadi. Telefon kamerasi vaqt boʻyicha nomlasa ham (`20261128_101530.jpg`) tartib suratga olingan vaqtga mos keladi.
-- **Sifat oʻzgarmaydi.** JPEG rasmlar qayta siqilmaydi, toʻgʻridan-toʻgʻri PDF ichiga joylanadi. `-k` — hajmni 2–3 barobar kamaytiradi (rasm eni 1800 px gacha).
+- **Oddiy `pdf` — sifat oʻzgarmaydi**, lekin hajm ham: PDF rasmlar jami hajmiga teng (JPEG qayta siqilmaydi). Telefon surati ~2–3 MB, 100 sahifa ≈ 250 MB boʻladi.
+- **Ixchamlash darajalari** (sinov: 5 ta 3024×4032 sahifa, jami 9.0 MB):
+
+  | Buyruq | Nima qiladi | Hajm | Qachon |
+  |---|---|---|---|
+  | `pdf` | Asl rasmlar, oʻzgarishsiz | 9.0 MB | Eng yuqori sifat, arxiv |
+  | `pdf -k` | Eni 1800 px gacha, sifat 80, rangli | 2.1 MB | Telefon va Telegram uchun, rasm/chizmali kitob |
+  | `pdf -kk` | Eni 1400 px gacha, oq-qora, sifat 65 | 1.3 MB | Faqat matnli kitob, eng kichik hajm |
+
+  Natijadan keyin dastur «Rasmlar jami X → PDF Y» deb hajmlarni koʻrsatadi. `-kk` da rasm/chizma/rangli sahifalar oq-qora boʻladi, matn esa yaxshi oʻqiladi. OCR (`-o`) ham ixcham rejimlar bilan ishlaydi.
 - Telefonda yonboshlab olingan rasmlar **oʻzi toʻgʻrilanadi**. Oʻchirish: `-r`.
 - PNG va WEBP ham ishlaydi. Oʻqib boʻlmaydigan fayl oʻtkazib yuboriladi va aytiladi. Asl rasmlarga tegilmaydi.
 - Oddiy `pdf` matnni **tanimaydi** — sahifalar rasm koʻrinishida. Qidirish va nusxalash uchun quyidagi OCR rejimidan foydalaning.
@@ -108,7 +118,7 @@ pdf -o Kitob2 Tarix      # boshqa papka va nom
 pdf -l uzb Kitob2        # oʻzbek tili (lotin). -l ishlatilsa -o shart emas
 pdf -l uzb_cyrl Kitob2   # oʻzbek kirill
 pdf -l tur+eng Kitob2    # aralash: turkcha va inglizcha matn
-pdf -o -k Kitob2         # tezroq va kichikroq (rasm eni 1800 px)
+pdf -o -kk Kitob2        # tezroq va ixcham (matn uchun yetarli)
 ```
 
 Yoki bosh ekrandagi moviy-yashil **Kitob-OCR** tugmasi (turkcha, Download/Kitob).
@@ -128,7 +138,7 @@ Yoki bosh ekrandagi moviy-yashil **Kitob-OCR** tugmasi (turkcha, Download/Kitob)
 1. Sahifalarni suratga oling → rasmlar `Download/Kitob` ga tushadi (yoki Fayllar ilovasida koʻchiring).
 2. Eski rasmlar aralashib ketmasin: har yangi kitob uchun alohida papka (`Download/Tarix`) — keyin `pdf -o Tarix`.
 3. Termux'da `pdf -o` yozing yoki tugmani bosing, kuting.
-4. `Download/Kitob` da `Kitob.pdf` va `Kitob.txt`. Kerak boʻlsa `pdf -k` bilan kichik nusxa oling va Telegram'ga yuboring.
+4. `Download/Kitob` da `Kitob.pdf` va `Kitob.txt`. Hajm katta boʻlsa, `pdf -k` yoki `pdf -kk` bilan ixcham nusxa oling va Telegram'ga yuboring.
 5. Natijani koʻzdan kechiring: OCR xato qilgan joylar `.txt` da qoladi — Notes ilovasida tuzatish mumkin.
 
 #### Muammolar
@@ -137,7 +147,7 @@ Yoki bosh ekrandagi moviy-yashil **Kitob-OCR** tugmasi (turkcha, Download/Kitob)
 | «Til maʼlumotini yuklab boʻlmadi» | Internetni tekshiring; til nomi toʻgʻrimi (`tur`, `uzb`, `eng`) |
 | «Papkada rasm yoʻq» | Rasmlar `jpg/png/webp` va papkaning oʻzida boʻlishi kerak (ichki papkalar olinmaydi) |
 | Matn bir-birining ichiga kirib ketgan | Ikki sahifali yoyilma (kitobning ikkala sahifasi bir rasmda) — har sahifani alohida suratga oling |
-| Juda sekin | `pdf -o -k` (kichik rasm) yoki Termux'ni batareya tejashdan chiqaring |
+| Juda sekin | `pdf -o -kk` (kichik rasm) yoki Termux'ni batareya tejashdan chiqaring |
 | Gʻalati belgilar | Rasm xira yoki qiyshiq; yaxshiroq surat yoki skaner ilovasi |
 
 ## 7. Bosh ekran tugmalari (ixtiyoriy)
@@ -187,7 +197,7 @@ pip uninstall -y yt-dlp yt-dlp-ejs
 | `termux-url-opener` | «Ulashish → Termux» bosilganda havolani `yt` ga beradi (`~/bin/` ga oʻrnatiladi) |
 | `mp4` | MKV/WEBM → MP4: video qayta kodlanmaydi, natija tekshiriladi |
 | `tugma`, `tugma.png` | Bosh ekran tugmasi va uning belgisi (`yt tugma` → `~/.shortcuts/YouTube-yuklash`) |
-| `pdf` | Kitob rasmlari → bitta PDF (tartib, burilish, `-k` — kichik fayl, `-o` — OCR) |
+| `pdf` | Kitob rasmlari → bitta PDF (tartib, burilish, `-k`/`-kk` — ixcham fayl, `-o` — OCR) |
 | `tugma-ocr`, `tugma-ocr.png` | Yettinchi tugma: Download/Kitob → qidiriladigan PDF, OCR (`~/.shortcuts/Kitob-OCR`) |
 | `tugma-pdf`, `tugma-pdf.png` | Oltinchi tugma: Download/Kitob → PDF (`~/.shortcuts/Rasmlar-PDF`) |
 | `sub` | Subtitr: `.srt`, toza matn va soʻzlar roʻyxati (`yt subtitr`) |
